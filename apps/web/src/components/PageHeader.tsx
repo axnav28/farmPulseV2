@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
+
 interface PageHeaderProps {
   eyebrow: string;
   title: string;
   description: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }
 
 export default function PageHeader({ eyebrow, title, description, action }: PageHeaderProps) {

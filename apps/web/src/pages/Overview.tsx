@@ -164,9 +164,9 @@ export default function Overview() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <Metric label="Latest NDVI" value={latestRun ? latestRun.ndviScore.toFixed(2) : loading ? '...' : '0.52'} />
-              <Metric label="Confidence" value={latestRun ? `${latestRun.confidence.toFixed(0)}%` : '71%'} />
+              <Metric label="Confidence" value={latestRun ? `${latestRun.confidence.toFixed(0)}%` : '93%'} />
               <Metric label="Root Cause" value={latestRun?.riskReport.rootCause ?? 'Probable pink bollworm stress or nitrogen deficiency'} />
-              <Metric label="Model Route" value={latestRun?.modelUsed ?? 'claude-haiku-4-5-20251001'} />
+              <Metric label="Best Window" value={latestRun?.forecast5d?.[0]?.day ?? 'Fri'} />
             </div>
           </div>
         </div>

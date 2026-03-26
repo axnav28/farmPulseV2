@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
 import ReasoningChain from '../components/ReasoningChain';
+import RiskMap from '../components/RiskMap';
 import { fetchDistrictDetail, fetchDistricts } from '../lib/api';
 import type { AnalysisResponse, DistrictSummary, DistrictsResponse } from '../types/farmpulse';
 
@@ -42,13 +43,41 @@ export default function DistrictExplorer() {
       <PageHeader
         eyebrow="District Explorer"
         title="District Risk Explorer"
-        description="Search every monitored district, inspect full agent reasoning, and generate farmer-facing or institutional responses on demand."
+        description="Search every monitored district, inspect full agent reasoning, and see NDVI stress rendered directly on the map with transparent source labeling."
       />
+
+      <RiskMap districts={filtered} metric="ndvi" height={360} title="NDVI Stress Heat Map" />
+
+      {districtsData?.ndviSource ? (
+        <div className="rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-[0.2em] text-text-muted">NDVI Provenance</p>
+              <p className="mt-2 text-sm font-semibold text-text-main">{districtsData.ndviSource.sourceName}</p>
+              <p className="mt-1 text-sm leading-6 text-text-muted">{districtsData.ndviSource.note}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs leading-5 text-text-muted">
+              <p>{districtsData.ndviSource.resolution}</p>
+              <a
+                href={districtsData.ndviSource.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex text-sm font-semibold text-primary"
+              >
+                View official source
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
         <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)] xl:min-h-[42rem] xl:max-h-[calc(100dvh-11rem)]">
           <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <h3 className="text-base font-semibold text-text-main">Monitored Districts</h3>
+            <div>
+              <h3 className="text-base font-semibold text-text-main">Monitored Districts</h3>
+              <p className="mt-1 text-sm text-text-muted">The table and the NDVI map above stay in sync with the same district filter.</p>
+            </div>
             <input
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
@@ -115,6 +144,20 @@ export default function DistrictExplorer() {
                     <SummaryMetric label="Stage" value={selectedDistrict.cropStage} />
                     <SummaryMetric label="Pest Signal" value={`${selectedDistrict.pestRisk} (${selectedDistrict.pestProbability}%)`} />
                   </div>
+                </div>
+                <div className="rounded-2xl border border-border bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-text-muted">NDVI Provenance</p>
+                  <p className="mt-2 text-sm font-semibold text-text-main">{selectedDistrict.ndviMeta.displayLabel}</p>
+                  <p className="mt-2 text-sm leading-6 text-text-muted">{selectedDistrict.ndviMeta.note}</p>
+                  <p className="mt-2 text-xs text-text-muted">{selectedDistrict.ndviMeta.sourceName} · {selectedDistrict.ndviMeta.resolution}</p>
+                  <a
+                    href={selectedDistrict.ndviMeta.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex text-sm font-semibold text-primary"
+                  >
+                    View official source
+                  </a>
                 </div>
                 <div className="rounded-2xl border border-border bg-background/60 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Outputs</p>

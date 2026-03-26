@@ -1,6 +1,19 @@
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type AgentStatus = 'IDLE' | 'RUNNING' | 'COMPLETE' | 'ERROR';
 
+export interface NdviMeta {
+  mode: 'demo_estimate' | 'reference_snapshot' | 'live_extract' | string;
+  observedAt: string;
+  freshnessDays: number;
+  sourceName: string;
+  sourceUrl: string;
+  resolution: string;
+  citation: string;
+  note: string;
+  displayLabel: string;
+  scoreRange: string;
+}
+
 export interface DistrictSummary {
   id: string;
   district: string;
@@ -14,6 +27,7 @@ export interface DistrictSummary {
   lat: number;
   lon: number;
   updatedAt: string;
+  ndviMeta: NdviMeta;
 }
 
 export interface StateSummary {
@@ -27,6 +41,13 @@ export interface StateSummary {
 export interface DistrictsResponse {
   districts: DistrictSummary[];
   states: StateSummary[];
+  ndviSource: {
+    mode: string;
+    sourceName: string;
+    sourceUrl: string;
+    resolution: string;
+    note: string;
+  };
   summary: {
     districtsMonitored: number;
     activeAlerts: number;
@@ -85,6 +106,28 @@ export interface SoilSnapshot {
   summary: string;
 }
 
+export interface MandiPriceResponse {
+  district: string;
+  state: string;
+  crop: string;
+  commodity: string;
+  market: string;
+  priceDate: string;
+  modalPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  benchmarkPrice: number;
+  currency: string;
+  unit: string;
+  trend: string;
+  recommendation: string;
+  recommendationShort: string;
+  sourceName: string;
+  sourceUrl: string;
+  live: boolean;
+  note: string;
+}
+
 export interface AnalysisResponse {
   runId: string;
   district: string;
@@ -94,6 +137,7 @@ export interface AnalysisResponse {
   ndviScore: number;
   ndviBaseline: number;
   ndviAnomalyPct: number;
+  ndviMeta: NdviMeta;
   weatherData: WeatherData;
   cropStage: string;
   daysToHarvest: number;

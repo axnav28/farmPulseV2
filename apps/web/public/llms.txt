@@ -6,7 +6,7 @@
 - FarmPulse AI monitors district-level crop stress using synthetic NDVI, weather data, crop calendars, and pest-risk heuristics.
 - It provides multilingual farmer advisories, including Marathi advisory flows for Maharashtra.
 - It exposes institutional dashboards for FPOs, insurers, and government early-warning workflows.
-- It maintains a full agent audit trail with model-routing, confidence, escalations, and timestamps.
+- It maintains a full agent audit trail with confidence, escalations, and timestamps.
 
 ## Key Routes
 - /overview: Command center dashboard

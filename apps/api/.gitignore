@@ -4,3 +4,4 @@ __pycache__/
 .env
 farm_data.json
 test_leaf.jpg
+.vercel

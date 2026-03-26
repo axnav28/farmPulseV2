@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 load_dotenv()
 
 APP_DIR = Path(__file__).resolve().parent
-DB_PATH = APP_DIR / "farmpulse.db"
+DB_PATH = Path(os.getenv("FARMPULSE_DB_PATH", "/tmp/farmpulse.db" if os.getenv("VERCEL") else str(APP_DIR / "farmpulse.db")))
 UTC = timezone.utc
 TODAY = date(2026, 3, 24)
 
@@ -128,6 +128,7 @@ class FarmPulseState(BaseModel):
     institutional_outputs: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
     satellite_signal: dict[str, Any] = Field(default_factory=dict)
+    ndvi_meta: dict[str, Any] = Field(default_factory=dict)
     district_record: dict[str, Any] = Field(default_factory=dict)
     soil_snapshot: dict[str, Any] = Field(default_factory=dict)
     forecast_5d: list[dict[str, Any]] = Field(default_factory=list)
@@ -198,6 +199,48 @@ DISTRICT_DATA = [
 ]
 
 SUPPORTED_CROPS = {"Wheat", "Rice", "Cotton", "Soybean", "Sugarcane"}
+
+CROP_TO_MANDI_COMMODITY = {
+    "Cotton": "Cotton",
+    "Wheat": "Wheat",
+    "Rice": "Paddy(Dhan)(Common)",
+    "Soybean": "Soyabean",
+    "Sugarcane": "Sugarcane",
+}
+
+MANDI_MARKET_BY_DISTRICT = {
+    "Yavatmal": "Yavatmal",
+    "Akola": "Akola",
+    "Amravati": "Amravati",
+    "Nagpur": "Nagpur",
+    "Nashik": "Nasik",
+    "Ludhiana": "Ludhiana",
+    "Bathinda": "Bathinda",
+    "Meerut": "Meerut",
+    "Indore": "Indore",
+    "Kota": "Kota",
+}
+
+MANDI_BENCHMARKS = {
+    "Cotton": 6000,
+    "Wheat": 2450,
+    "Rice": 2300,
+    "Soybean": 4550,
+    "Sugarcane": 360,
+}
+
+MANDI_FALLBACK = {
+    ("Yavatmal", "Cotton"): {"market": "Yavatmal", "modalPrice": 6200, "minPrice": 6025, "maxPrice": 6380, "priceDate": "2026-03-26"},
+    ("Akola", "Cotton"): {"market": "Akola", "modalPrice": 6080, "minPrice": 5920, "maxPrice": 6250, "priceDate": "2026-03-26"},
+    ("Amravati", "Cotton"): {"market": "Amravati", "modalPrice": 6150, "minPrice": 5980, "maxPrice": 6310, "priceDate": "2026-03-26"},
+    ("Ludhiana", "Wheat"): {"market": "Ludhiana", "modalPrice": 2525, "minPrice": 2450, "maxPrice": 2590, "priceDate": "2026-03-26"},
+    ("Meerut", "Sugarcane"): {"market": "Meerut", "modalPrice": 365, "minPrice": 355, "maxPrice": 372, "priceDate": "2026-03-26"},
+    ("Indore", "Soybean"): {"market": "Indore", "modalPrice": 4680, "minPrice": 4520, "maxPrice": 4780, "priceDate": "2026-03-26"},
+    ("Kota", "Soybean"): {"market": "Kota", "modalPrice": 4620, "minPrice": 4490, "maxPrice": 4740, "priceDate": "2026-03-26"},
+}
+
+AGMARKNET_CATALOG_URL = "https://www.data.gov.in/resource/current-daily-price-various-commodities-various-markets-mandi"
+DEFAULT_AGMARKNET_RESOURCE_ID = "9ef84268-d588-465a-a308-a864a43d0070"
 
 CROP_CALENDAR: dict[str, dict[str, dict[str, Any]]] = {
     "Maharashtra": {
@@ -380,10 +423,10 @@ def get_district_record(district_name: str) -> DistrictRecord:
 
 def select_model(task_type: str, complexity: str) -> str:
     if task_type == "sms_advisory" or complexity == "low":
-        return "claude-haiku-4-5-20251001"
+        return "farmer-advisory-engine"
     if task_type == "institutional_report" or complexity == "high":
-        return "claude-sonnet-4-6"
-    return "claude-haiku-4-5-20251001"
+        return "institutional-analysis-engine"
+    return "farmer-advisory-engine"
 
 
 async def emit_event(run_id: str, agent: str, step: str, status: str, message: str) -> None:
@@ -540,6 +583,171 @@ def synthetic_ndvi(record: DistrictRecord, crop: str, freshness_days: int, force
     return round(max(0.22, min(0.88, value)), 2)
 
 
+def ndvi_reference_meta(record: DistrictRecord, crop: str, freshness_days: int, ndvi_score: float, baseline: float) -> dict[str, Any]:
+    observed_at = (TODAY - timedelta(days=freshness_days)).isoformat()
+    return {
+        "mode": "demo_estimate",
+        "observedAt": observed_at,
+        "freshnessDays": freshness_days,
+        "sourceName": "NASA Earthdata MODIS MOD13Q1 V061",
+        "sourceUrl": "https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061",
+        "resolution": "250 m, 16-day composite",
+        "citation": "Didan, K. (2021). MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061. NASA LP DAAC. doi:10.5067/MODIS/MOD13Q1.061",
+        "note": f"Displayed district NDVI is a demo estimate aligned to MODIS NDVI ranges for {record.district} {crop.lower()} conditions, not a live pixel extraction.",
+        "displayLabel": "Demo-estimated NDVI aligned to NASA MODIS reference ranges",
+        "scoreRange": f"Observed {ndvi_score:.2f} vs baseline {baseline:.2f}",
+    }
+
+
+
+def normalized_record_lookup(record: dict[str, Any]) -> dict[str, Any]:
+    return {str(key).lower().replace('_', '').replace(' ', '').replace('-', ''): value for key, value in record.items()}
+
+
+def pick_record_value(record: dict[str, Any], *candidates: str) -> Any:
+    normalized = normalized_record_lookup(record)
+    for candidate in candidates:
+        key = candidate.lower().replace('_', '').replace(' ', '').replace('-', '')
+        if key in normalized and normalized[key] not in (None, ''):
+            return normalized[key]
+    return None
+
+
+def to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(str(value).replace(',', '').strip())
+    except Exception:
+        return default
+
+
+def to_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(round(float(str(value).replace(',', '').strip())))
+    except Exception:
+        return default
+
+
+def mandi_recommendation(crop: str, modal_price: int, benchmark_price: int) -> tuple[str, str, str]:
+    if modal_price >= benchmark_price * 1.04:
+        return (
+            "Strong mandi realization against the working benchmark. Consider staggered selling now instead of waiting for a sharp jump.",
+            "Sell in tranches",
+            "Above benchmark",
+        )
+    if modal_price <= benchmark_price * 0.97:
+        return (
+            "Current mandi realization is softer than the working benchmark. Hold if storage and cash flow permit, otherwise sell only part of the lot.",
+            "Hold or part-sell",
+            "Below benchmark",
+        )
+    return (
+        "Current mandi realization is near the working benchmark. Sell only planned volume and review again after the next market update.",
+        "Neutral hold",
+        "Near benchmark",
+    )
+
+
+async def fetch_mandi_price(record: DistrictRecord, crop: str) -> dict[str, Any]:
+    commodity = CROP_TO_MANDI_COMMODITY.get(crop, crop)
+    market_name = MANDI_MARKET_BY_DISTRICT.get(record.district, record.district)
+    benchmark = MANDI_BENCHMARKS.get(crop, 1000)
+    api_key = os.getenv('AGMARKNET_API_KEY')
+    resource_id = os.getenv('AGMARKNET_RESOURCE_ID', DEFAULT_AGMARKNET_RESOURCE_ID)
+
+    if api_key:
+        try:
+            params = {
+                'api-key': api_key,
+                'format': 'json',
+                'limit': 25,
+                'offset': 0,
+                'filters[state]': record.state,
+                'filters[district]': record.district,
+                'filters[commodity]': commodity,
+            }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(f'https://api.data.gov.in/resource/{resource_id}', params=params)
+                response.raise_for_status()
+                payload = response.json()
+            records = payload.get('records') or payload.get('results') or []
+            chosen: dict[str, Any] | None = None
+            for item in records:
+                market_value = str(pick_record_value(item, 'market', 'market_name') or '').lower()
+                if market_name.lower() in market_value:
+                    chosen = item
+                    break
+            if chosen is None and records:
+                chosen = records[0]
+            if chosen:
+                modal_price = to_int(pick_record_value(chosen, 'modal_price', 'modalprice', 'model_price'))
+                min_price = to_int(pick_record_value(chosen, 'min_price', 'minprice'))
+                max_price = to_int(pick_record_value(chosen, 'max_price', 'maxprice'))
+                price_date = str(pick_record_value(chosen, 'arrival_date', 'pricedate', 'price_date') or TODAY.isoformat())
+                market = str(pick_record_value(chosen, 'market', 'market_name') or market_name)
+                if modal_price > 0:
+                    recommendation, recommendation_short, trend = mandi_recommendation(crop, modal_price, benchmark)
+                    return {
+                        'district': record.district,
+                        'state': record.state,
+                        'crop': crop,
+                        'commodity': commodity,
+                        'market': market,
+                        'priceDate': price_date,
+                        'modalPrice': modal_price,
+                        'minPrice': min_price or modal_price,
+                        'maxPrice': max_price or modal_price,
+                        'benchmarkPrice': benchmark,
+                        'currency': 'INR',
+                        'unit': 'quintal',
+                        'trend': trend,
+                        'recommendation': recommendation,
+                        'recommendationShort': recommendation_short,
+                        'sourceName': 'data.gov.in Agmarknet API',
+                        'sourceUrl': AGMARKNET_CATALOG_URL,
+                        'live': True,
+                        'note': 'Live mandi price fetched from the official Agmarknet catalog on data.gov.in.',
+                    }
+        except Exception:
+            pass
+
+    fallback = MANDI_FALLBACK.get((record.district, crop))
+    if fallback is None:
+        rng = random.Random(seed_for(record.district, crop, 'mandi'))
+        modal_price = int(round(benchmark * (0.97 + rng.uniform(-0.03, 0.08))))
+        spread = max(10, int(modal_price * 0.025))
+        fallback = {
+            'market': market_name,
+            'modalPrice': modal_price,
+            'minPrice': modal_price - spread,
+            'maxPrice': modal_price + spread,
+            'priceDate': TODAY.isoformat(),
+        }
+
+    recommendation, recommendation_short, trend = mandi_recommendation(crop, fallback['modalPrice'], benchmark)
+    live_note = 'Live Agmarknet pricing is enabled when AGMARKNET_API_KEY is configured on the API host.'
+    return {
+        'district': record.district,
+        'state': record.state,
+        'crop': crop,
+        'commodity': commodity,
+        'market': fallback['market'],
+        'priceDate': fallback['priceDate'],
+        'modalPrice': fallback['modalPrice'],
+        'minPrice': fallback['minPrice'],
+        'maxPrice': fallback['maxPrice'],
+        'benchmarkPrice': benchmark,
+        'currency': 'INR',
+        'unit': 'quintal',
+        'trend': trend,
+        'recommendation': recommendation,
+        'recommendationShort': recommendation_short,
+        'sourceName': 'Agmarknet-aligned fallback sample',
+        'sourceUrl': AGMARKNET_CATALOG_URL,
+        'live': False,
+        'note': 'Using a demo fallback because live Agmarknet API credentials or matching district records are not available in this environment. ' + live_note,
+    }
+
+
 async def fetch_weather(record: DistrictRecord) -> WeatherData:
     url = (
         "https://api.open-meteo.com/v1/forecast"
@@ -629,67 +837,186 @@ def map_risk_category(score: float) -> RiskCategory:
     return "LOW"
 
 
-def render_sms(state: FarmPulseState, kvk_contact: str) -> str:
-    risk = state.risk_report["riskCategory"]
-    if not state.crop_supported:
-        return "इस फसल के लिए पर्याप्त डेटा उपलब्ध नहीं है। कृपया KVK से संपर्क करें।"
-    if state.escalate and state.confidence < 60:
-        if state.language == "Marathi":
-            return "विश्वास पातळी कमी आहे. कृपया शेत तपासणीसाठी KVK शी संपर्क करा."
-        if state.language == "Punjabi":
-            return "ਭਰੋਸਾ ਘੱਟ ਹੈ। ਮੈਦਾਨੀ ਜਾਂਚ ਲਈ KVK ਨਾਲ ਸੰਪਰਕ ਕਰੋ।"
-        if state.language == "English":
-            return "Confidence is low. Please contact your KVK for field verification."
-        return "विश्वास स्तर कम है। खेत सत्यापन के लिए KVK से संपर्क करें।"
-    if state.language == "Marathi":
-        message = f"{state.district}: {state.crop} ताण जास्त. 7 दिवसांत फेरोमोन सापळे लावा, पान तपासा. उच्च जोखीम. KVK {kvk_contact}"
-    elif state.language == "Punjabi":
-        message = f"{state.district}: {state.crop} ਖਤਰਾ ਉੱਚਾ. 7 ਦਿਨਾਂ ਵਿੱਚ ਫੇਰੋਮੋਨ ਟ੍ਰੈਪ ਲਗਾਓ, ਖੇਤ ਚੈੱਕ ਕਰੋ. KVK {kvk_contact}"
-    elif state.language == "English":
-        message = f"{state.district}: High {state.crop} risk. Install pheromone traps within 7 days and verify in-field. KVK {kvk_contact}"
+def detect_query_signals(query: str) -> dict[str, bool]:
+    normalized = query.lower()
+    return {
+        "asks_fertilizer_timing": any(token in normalized for token in ["fertilizer", "fertiliser", "खत", "खाद", "उर्वरक", "नत्र", "top dress", "topdress"]),
+        "mentions_yellowing": any(token in normalized for token in ["yellow", "yellowing", "पीला", "पीली", "पिवळ", "yellow spots", "डाग"]),
+        "mentions_spots": any(token in normalized for token in ["spots", "spot", "डाग", "धब्ब", "दाग"]),
+        "mentions_pest": any(token in normalized for token in ["worm", "pest", "bollworm", "अळी", "कीट", "sucking pest"]),
+    }
+
+
+def choose_application_window(forecast_5d: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not forecast_5d:
+        return None
+    ranked = sorted(
+        forecast_5d,
+        key=lambda day: (day["rainMm"], day["humidityPct"], day["maxTempC"]),
+    )
+    return ranked[0]
+
+
+def format_window_label(day: dict[str, Any] | None) -> str:
+    if not day:
+        return "next dry window"
+    return f"{day['day']} {datetime.fromisoformat(day['date']).strftime('%d %b')}"
+
+
+def localize_pest_name(pest_name: str, language: str) -> str:
+    mapping = {
+        "Pink bollworm": {
+            "English": "pink bollworm",
+            "Hindi": "गुलाबी सुंडी",
+            "Marathi": "गुलाबी बोंड अळी",
+        },
+        "Whitefly": {
+            "English": "whitefly",
+            "Hindi": "सफेद मक्खी",
+            "Marathi": "पांढरी माशी",
+        },
+        "Stem fly": {
+            "English": "stem fly",
+            "Hindi": "स्टेम फ्लाई",
+            "Marathi": "स्टेम फ्लाय",
+        },
+        "Aphid": {
+            "English": "aphid",
+            "Hindi": "एफिड",
+            "Marathi": "अळीमाशी",
+        },
+        "Early shoot borer": {
+            "English": "early shoot borer",
+            "Hindi": "शूट बोरर",
+            "Marathi": "शूट बोरर",
+        },
+    }
+    localized = mapping.get(pest_name, {})
+    return localized.get(language, localized.get("English", pest_name.lower()))
+
+
+def build_query_aware_plan(state: FarmPulseState) -> dict[str, Any]:
+    signals = detect_query_signals(state.farmer_query)
+    soil = state.soil_snapshot
+    best_day = choose_application_window(state.forecast_5d)
+    window_label = format_window_label(best_day)
+    pest_label = localize_pest_name(state.pest_risk, state.language)
+    rain_mm = best_day["rainMm"] if best_day else 0.0
+    is_wet_window = bool(best_day and best_day["rainMm"] > 8)
+
+    if is_wet_window:
+        timing = f"Wait for a drier window around {window_label}; avoid fertilizer before {rain_mm:.0f} mm rain."
+    elif soil["moistureBand"] == "High":
+        timing = f"Wait until {window_label}; the field is already wet, so top-dressing now may be lost."
+    elif soil["moistureBand"] == "Low":
+        timing = f"Apply only a light split nitrogen dose around {window_label} and, if possible, give light irrigation afterwards."
     else:
-        message = f"{state.district}: {state.crop} जोखिम ऊंचा. 7 दिन में फेरोमोन ट्रैप लगाएं, खेत जांचें. KVK {kvk_contact}"
-    return message[:160]
+        timing = f"Apply only a split nitrogen dose around {window_label} when leaves are dry."
+
+    if state.pest_probability >= 60:
+        field_check = f"Before fertilizer, inspect 10 plants for fresh {pest_label} damage."
+    elif signals["mentions_yellowing"]:
+        field_check = "Check whether yellowing is mainly on older leaves; that usually supports nitrogen deficiency."
+    else:
+        field_check = "Check 10 representative plants before applying any corrective input."
+
+    if signals["mentions_yellowing"] and state.pest_probability >= 60:
+        primary_concern = f"Yellowing may be due to {pest_label} pressure or nitrogen deficiency."
+    elif signals["mentions_yellowing"]:
+        primary_concern = "Leaf yellowing is more consistent with nutrient stress than water stress."
+    else:
+        primary_concern = state.risk_report["rootCause"]
+
+    if soil["nitrogenKgHa"] < 230 or signals["mentions_yellowing"]:
+        nutrient_step = "If no fresh pest damage is seen, use a split nitrogen top-dress rather than one heavy dose."
+    else:
+        nutrient_step = "Keep nutrition balanced and avoid excess fertilizer in one go."
+
+    if signals["asks_fertilizer_timing"]:
+        recommendation = f"{field_check} {timing} {nutrient_step}"
+    else:
+        recommendation = f"{field_check} {nutrient_step} {timing}"
+
+    return {
+        "signals": signals,
+        "window_label": window_label,
+        "primary_concern": primary_concern,
+        "timing": timing,
+        "field_check": field_check,
+        "nutrient_step": nutrient_step,
+        "recommended_action": recommendation,
+        "pest_label": pest_label,
+        "rain_mm": rain_mm,
+    }
 
 
-def render_whatsapp(state: FarmPulseState, kvk_contact: str) -> str:
-    if not state.crop_supported:
-        return "इस फसल के लिए पर्याप्त डेटा उपलब्ध नहीं है। कृपया KVK से संपर्क करें।"
-    if state.escalate and state.confidence < 60:
-        if state.language == "Marathi":
-            return f"⚠️ खात्री कमी आहे.\n1. शेताची प्रत्यक्ष पाहणी करा.\n2. पान/बोंड नमुना KVK ला दाखवा.\n3. KVK: {kvk_contact}"
-        if state.language == "Punjabi":
-            return f"⚠️ ਭਰੋਸਾ ਘੱਟ ਹੈ.\n1. ਖੇਤ ਦੀ ਜਾਂਚ ਕਰੋ.\n2. ਨਮੂਨਾ KVK ਨੂੰ ਵਿਖਾਓ.\n3. KVK: {kvk_contact}"
-        if state.language == "English":
-            return f"⚠️ Confidence is low.\n1. Inspect the field.\n2. Share samples with KVK.\n3. KVK: {kvk_contact}"
-        return f"⚠️ विश्वास कम है.\n1. खेत का निरीक्षण करें.\n2. नमूना KVK को दिखाएं.\n3. KVK: {kvk_contact}"
+def localize_plan_text(state: FarmPulseState, plan: dict[str, Any]) -> dict[str, str]:
+    soil = state.soil_snapshot
+    signals = plan["signals"]
+    rain_mm = plan["rain_mm"]
+    window_label = plan["window_label"]
+    pest_label = plan["pest_label"]
+
+    if state.language == "Hindi":
+        if signals["mentions_yellowing"] and state.pest_probability >= 60:
+            primary = f"पत्तियों का पीलापन {pest_label} या नत्र की कमी से जुड़ा हो सकता है।"
+        elif signals["mentions_yellowing"]:
+            primary = "पत्तियों का पीलापन पोषण की कमी से अधिक मेल खाता है।"
+        else:
+            primary = state.risk_report["rootCause"]
+
+        if state.pest_probability >= 60:
+            field_check = f"खाद देने से पहले 10 पौधों में ताजा {pest_label} नुकसान देखें।"
+        elif signals["mentions_yellowing"]:
+            field_check = "देखें कि पीलापन पुरानी पत्तियों पर ज्यादा है या नहीं; यह नत्र कमी का संकेत हो सकता है।"
+        else:
+            field_check = "किसी भी सुधारात्मक इनपुट से पहले 10 प्रतिनिधि पौधों की जांच करें।"
+
+        if rain_mm > 8:
+            timing = f"{window_label} के आसपास सूखे समय का इंतजार करें; {rain_mm:.0f} मिमी बारिश से पहले खाद न डालें।"
+        elif soil["moistureBand"] == "High":
+            timing = f"{window_label} तक प्रतीक्षा करें; खेत अभी गीला है, इसलिए अभी टॉप ड्रेसिंग न करें।"
+        elif soil["moistureBand"] == "Low":
+            timing = f"{window_label} के आसपास नत्र की हल्की विभाजित मात्रा दें और संभव हो तो हल्की सिंचाई करें।"
+        else:
+            timing = f"{window_label} के आसपास पत्तियां सूखी होने पर नत्र की विभाजित मात्रा दें।"
+
+        nutrient = "यदि ताजा कीट नुकसान न दिखे तो एक भारी खुराक के बजाय नत्र दो हिस्सों में दें।" if soil["nitrogenKgHa"] < 230 or signals["mentions_yellowing"] else "खाद संतुलित रखें; एक बार में ज्यादा मात्रा न दें।"
+        return {"primary": primary, "field_check": field_check, "timing": timing, "nutrient": nutrient}
+
     if state.language == "Marathi":
-        return (
-            f"⚠️ {state.district} मध्ये {state.crop} वर ताण दिसतो.\n"
-            "1. 7 दिवसांत फेरोमोन सापळे लावा.\n"
-            "2. पिवळे डाग व बोंड तपासा; संतुलित नत्र द्या.\n"
-            f"3. उच्च जोखीम असल्याने KVK शी संपर्क करा: {kvk_contact}"
-        )[:400]
-    if state.language == "Punjabi":
-        return (
-            f"⚠️ {state.district} ਵਿੱਚ {state.crop} ਉੱਤੇ ਤਾਣ ਦੇ ਸੰਕੇਤ ਹਨ.\n"
-            "1. 7 ਦਿਨਾਂ ਵਿੱਚ ਫੇਰੋਮੋਨ ਟ੍ਰੈਪ ਲਗਾਓ.\n"
-            "2. ਪੱਤੇ ਤੇ ਬੋਲਾਂ ਦੀ ਜਾਂਚ ਕਰੋ.\n"
-            f"3. KVK ਨਾਲ ਸਲਾਹ ਕਰੋ: {kvk_contact}"
-        )[:400]
-    if state.language == "English":
-        return (
-            f"⚠️ {state.crop} stress detected in {state.district}.\n"
-            "1. Install pheromone traps within 7 days.\n"
-            "2. Inspect yellowing leaves and boll damage.\n"
-            f"3. Contact KVK for field verification: {kvk_contact}"
-        )[:400]
-    return (
-        f"⚠️ {state.district} में {state.crop} पर तनाव संकेत हैं.\n"
-        "1. 7 दिन में फेरोमोन ट्रैप लगाएं.\n"
-        "2. पत्तियों और बॉल की जांच करें.\n"
-        f"3. KVK से सत्यापन कराएं: {kvk_contact}"
-    )[:400]
+        if signals["mentions_yellowing"] and state.pest_probability >= 60:
+            primary = f"पिवळेपणा {pest_label} किंवा नत्र कमतरतेमुळे असू शकतो."
+        elif signals["mentions_yellowing"]:
+            primary = "पिवळेपणा पोषण कमतरतेशी अधिक जुळतो."
+        else:
+            primary = state.risk_report["rootCause"]
+
+        if state.pest_probability >= 60:
+            field_check = f"खत देण्यापूर्वी 10 झाडांवर ताजी {pest_label} हानी तपासा."
+        elif signals["mentions_yellowing"]:
+            field_check = "पिवळेपणा जुन्या पानांवर जास्त आहे का ते पाहा; हे नत्र कमतरतेचे लक्षण असू शकते."
+        else:
+            field_check = "कोणतेही सुधारात्मक इनपुट देण्यापूर्वी 10 प्रतिनिधी झाडे तपासा."
+
+        if rain_mm > 8:
+            timing = f"{window_label} च्या आसपास कोरड्या वेळेची वाट पाहा; {rain_mm:.0f} मिमी पावसापूर्वी खत टाकू नका."
+        elif soil["moistureBand"] == "High":
+            timing = f"{window_label} पर्यंत थांबा; शेत आधीच ओलसर आहे, त्यामुळे आत्ताच टॉप ड्रेसिंग करू नका."
+        elif soil["moistureBand"] == "Low":
+            timing = f"{window_label} च्या आसपास नत्राची हलकी विभागलेली मात्रा द्या आणि शक्य असल्यास हलके पाणी द्या."
+        else:
+            timing = f"{window_label} च्या आसपास पाने कोरडी असताना नत्राची विभागलेली मात्रा द्या."
+
+        nutrient = "ताजी किडीची हानी दिसत नसेल तर एकदम जड मात्रा देऊ नका; नत्र दोन भागांत द्या." if soil["nitrogenKgHa"] < 230 or signals["mentions_yellowing"] else "अन्नद्रव्ये संतुलित ठेवा; एकाच वेळी जास्त खत देऊ नका."
+        return {"primary": primary, "field_check": field_check, "timing": timing, "nutrient": nutrient}
+
+    return {
+        "primary": plan["primary_concern"],
+        "field_check": plan["field_check"],
+        "timing": plan["timing"],
+        "nutrient": plan["nutrient_step"],
+    }
 
 
 def render_sms(state: FarmPulseState, kvk_contact: str) -> str:
@@ -699,12 +1026,6 @@ def render_sms(state: FarmPulseState, kvk_contact: str) -> str:
             "Marathi": "या पिकासाठी पुरेसा डेटा उपलब्ध नाही. कृपया KVK शी संपर्क करा.",
             "Punjabi": "ਇਸ ਫਸਲ ਲਈ ਪ੍ਰਯਾਪਤ ਡਾਟਾ ਉਪਲਬਧ ਨਹੀਂ। ਕਿਰਪਾ ਕਰਕੇ KVK ਨਾਲ ਸੰਪਰਕ ਕਰੋ।",
             "English": "Not enough data is available for this crop. Please contact your KVK.",
-            "Bengali": "এই ফসলের জন্য পর্যাপ্ত তথ্য নেই। অনুগ্রহ করে KVK-এর সাথে যোগাযোগ করুন।",
-            "Gujarati": "આ પાક માટે પૂરતો ડેટા ઉપલબ્ધ નથી. કૃપા કરીને KVKનો સંપર્ક કરો.",
-            "Tamil": "இந்த பயிருக்கு போதுமான தரவு இல்லை. அருகிலுள்ள KVK-யை தொடர்புகொள்ளவும்.",
-            "Telugu": "ఈ పంటకు తగిన సమాచారం లేదు. దయచేసి KVK ను సంప్రదించండి.",
-            "Kannada": "ಈ ಬೆಳೆಗಾಗಿ ಸಾಕಷ್ಟು ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು KVK ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
-            "Malayalam": "ഈ വിളയ്ക്കായി മതിയായ ഡാറ്റ ലഭ്യമല്ല. ദയവായി KVKനെ സമീപിക്കുക.",
         }
         return messages.get(state.language, messages["English"])
 
@@ -714,28 +1035,27 @@ def render_sms(state: FarmPulseState, kvk_contact: str) -> str:
             "Marathi": "विश्वास पातळी कमी आहे. शेत तपासणीसाठी KVK शी संपर्क करा.",
             "Punjabi": "ਭਰੋਸਾ ਘੱਟ ਹੈ। ਮੈਦਾਨੀ ਜਾਂਚ ਲਈ KVK ਨਾਲ ਸੰਪਰਕ ਕਰੋ।",
             "English": "Confidence is low. Please contact your KVK for field verification.",
-            "Bengali": "বিশ্বাসযোগ্যতা কম। মাঠ যাচাইয়ের জন্য KVK-এর সাথে যোগাযোগ করুন।",
-            "Gujarati": "વિશ્વાસ સ્તર ઓછું છે. ખેતર ચકાસણી માટે KVKનો સંપર્ક કરો.",
-            "Tamil": "நம்பிக்கை அளவு குறைவு. வயல் சரிபார்ப்புக்கு KVK-யை தொடர்புகொள்ளவும்.",
-            "Telugu": "నమ్మక స్థాయి తక్కువగా ఉంది. పొలం ధృవీకరణ కోసం KVK ను సంప్రదించండి.",
-            "Kannada": "ವಿಶ್ವಾಸ ಮಟ್ಟ ಕಡಿಮೆ ಇದೆ. ಹೊಲ ಪರಿಶೀಲನೆಗಾಗಿ KVK ಅನ್ನು ಸಂಪರ್ಕಿಸಿ.",
-            "Malayalam": "വിശ്വാസനില കുറവാണ്. വയൽ പരിശോധനയ്ക്കായി KVKനെ ബന്ധപ്പെടുക.",
         }
         return messages.get(state.language, messages["English"])
 
-    messages = {
-        "Hindi": f"{state.district}: {state.crop} जोखिम ऊंचा. 7 दिन में फेरोमोन ट्रैप लगाएं, खेत जांचें. KVK {kvk_contact}",
-        "Marathi": f"{state.district}: {state.crop} ताण जास्त. 7 दिवसांत फेरोमोन सापळे लावा, पान तपासा. KVK {kvk_contact}",
-        "Punjabi": f"{state.district}: {state.crop} ਖਤਰਾ ਉੱਚਾ. 7 ਦਿਨਾਂ ਵਿੱਚ ਫੇਰੋਮੋਨ ਟ੍ਰੈਪ ਲਗਾਓ. KVK {kvk_contact}",
-        "English": f"{state.district}: High {state.crop} risk. Install pheromone traps within 7 days. KVK {kvk_contact}",
-        "Bengali": f"{state.district}: {state.crop} ঝুঁকি বেশি। 7 দিনের মধ্যে ফেরোমোন ট্র্যাপ বসান। KVK {kvk_contact}",
-        "Gujarati": f"{state.district}: {state.crop} જોખમ ઊંચું છે. 7 દિવસમાં ફેરોમોન ટ્રેપ લગાવો. KVK {kvk_contact}",
-        "Tamil": f"{state.district}: {state.crop} அபாயம் அதிகம். 7 நாளில் பெரோமோன் வலை அமைக்கவும். KVK {kvk_contact}",
-        "Telugu": f"{state.district}: {state.crop} ప్రమాదం ఎక్కువ. 7 రోజుల్లో ఫెరోమోన్ ట్రాప్ వేయండి. KVK {kvk_contact}",
-        "Kannada": f"{state.district}: {state.crop} ಅಪಾಯ ಹೆಚ್ಚು. 7 ದಿನಗಳಲ್ಲಿ ಫೆರೊಮೋನ್ ಟ್ರ್ಯಾಪ್ ಹಾಕಿ. KVK {kvk_contact}",
-        "Malayalam": f"{state.district}: {state.crop} അപകടം കൂടുതലാണ്. 7 ദിവസത്തിനകം ഫെറോമോൺ ട്രാപ്പ് സ്ഥാപിക്കുക. KVK {kvk_contact}",
-    }
-    return messages.get(state.language, messages["English"])[:160]
+    plan = build_query_aware_plan(state)
+    if state.language == "Hindi":
+        message = (
+            f"{state.district}: पहले {plan['pest_label']} की जांच करें. ताजा नुकसान न हो तो {plan['window_label']} पर नत्र की विभाजित मात्रा दें. KVK {kvk_contact}"
+        )
+    elif state.language == "Marathi":
+        message = (
+            f"{state.district}: आधी {plan['pest_label']} तपासा. ताजे नुकसान नसेल तर {plan['window_label']} ला नत्राची विभागलेली मात्रा द्या. KVK {kvk_contact}"
+        )
+    elif state.language == "Punjabi":
+        message = (
+            f"{state.district}: ਪਹਿਲਾਂ ਕੀੜੇ ਦੀ ਜਾਂਚ ਕਰੋ. ਨਵਾਂ ਨੁਕਸਾਨ ਨਾ ਹੋਵੇ ਤਾਂ {plan['window_label']} 'ਤੇ ਖਾਦ ਦੀ ਵੰਡਿਆ ਖੁਰਾਕ ਦਿਓ. KVK {kvk_contact}"
+        )
+    else:
+        message = (
+            f"{state.district}: Check {plan['pest_label']} first. If no fresh damage, apply split nitrogen on {plan['window_label']}. KVK {kvk_contact}"
+        )
+    return message[:160]
 
 
 def render_whatsapp(state: FarmPulseState, kvk_contact: str) -> str:
@@ -745,31 +1065,43 @@ def render_whatsapp(state: FarmPulseState, kvk_contact: str) -> str:
     if state.escalate and state.confidence < 60:
         messages = {
             "Hindi": f"⚠️ विश्वास कम है.\n1. खेत का निरीक्षण करें.\n2. नमूना KVK को दिखाएं.\n3. KVK: {kvk_contact}",
-            "Marathi": f"⚠️ खात्री कमी आहे.\n1. शेताची प्रत्यक्ष पाहणी करा.\n2. पान किंवा बोंड नमुना KVK ला दाखवा.\n3. KVK: {kvk_contact}",
+            "Marathi": f"⚠️ खात्री कमी आहे.\n1. शेताची प्रत्यक्ष पाहणी करा.\n2. नमुना KVK ला दाखवा.\n3. KVK: {kvk_contact}",
             "Punjabi": f"⚠️ ਭਰੋਸਾ ਘੱਟ ਹੈ.\n1. ਖੇਤ ਦੀ ਜਾਂਚ ਕਰੋ.\n2. ਨਮੂਨਾ KVK ਨੂੰ ਵਿਖਾਓ.\n3. KVK: {kvk_contact}",
             "English": f"⚠️ Confidence is low.\n1. Inspect the field.\n2. Share samples with KVK.\n3. KVK: {kvk_contact}",
-            "Bengali": f"⚠️ বিশ্বাস কম।\n1. মাঠ পরীক্ষা করুন।\n2. নমুনা KVK-তে দেখান।\n3. KVK: {kvk_contact}",
-            "Gujarati": f"⚠️ વિશ્વાસ ઓછો છે.\n1. ખેતર તપાસો.\n2. નમૂનો KVKને બતાવો.\n3. KVK: {kvk_contact}",
-            "Tamil": f"⚠️ நம்பிக்கை குறைவு.\n1. வயலை பாருங்கள்.\n2. மாதிரியை KVK-க்கு காட்டுங்கள்.\n3. KVK: {kvk_contact}",
-            "Telugu": f"⚠️ నమ్మకం తక్కువ.\n1. పొలాన్ని పరిశీలించండి.\n2. నమూనాను KVKకి చూపండి.\n3. KVK: {kvk_contact}",
-            "Kannada": f"⚠️ ವಿಶ್ವಾಸ ಕಡಿಮೆ.\n1. ಹೊಲವನ್ನು ಪರಿಶೀಲಿಸಿ.\n2. ಮಾದರಿಯನ್ನು KVKಗೆ ತೋರಿಸಿ.\n3. KVK: {kvk_contact}",
-            "Malayalam": f"⚠️ വിശ്വാസം കുറവാണ്.\n1. വയൽ പരിശോധിക്കുക.\n2. സാമ്പിൾ KVK-യ്ക്ക് കാണിക്കുക.\n3. KVK: {kvk_contact}",
         }
         return messages.get(state.language, messages["English"])[:400]
 
-    messages = {
-        "Hindi": f"⚠️ {state.district} में {state.crop} पर तनाव संकेत हैं.\n1. 7 दिन में फेरोमोन ट्रैप लगाएं.\n2. पत्तियों और बॉल की जांच करें.\n3. KVK से सत्यापन कराएं: {kvk_contact}",
-        "Marathi": f"⚠️ {state.district} मध्ये {state.crop} वर ताण दिसतो.\n1. 7 दिवसांत फेरोमोन सापळे लावा.\n2. पिवळे डाग व बोंड तपासा; संतुलित नत्र द्या.\n3. KVK शी संपर्क करा: {kvk_contact}",
-        "Punjabi": f"⚠️ {state.district} ਵਿੱਚ {state.crop} ਉੱਤੇ ਤਾਣ ਦੇ ਸੰਕੇਤ ਹਨ.\n1. 7 ਦਿਨਾਂ ਵਿੱਚ ਫੇਰੋਮੋਨ ਟ੍ਰੈਪ ਲਗਾਓ.\n2. ਪੱਤੇ ਅਤੇ ਬੋਲਾਂ ਦੀ ਜਾਂਚ ਕਰੋ.\n3. KVK ਨਾਲ ਸਲਾਹ ਕਰੋ: {kvk_contact}",
-        "English": f"⚠️ {state.crop} stress detected in {state.district}.\n1. Install pheromone traps within 7 days.\n2. Inspect yellowing leaves and boll damage.\n3. Contact KVK for field verification: {kvk_contact}",
-        "Bengali": f"⚠️ {state.district} জেলায় {state.crop}-এ চাপের লক্ষণ আছে।\n1. 7 দিনের মধ্যে ফেরোমোন ট্র্যাপ বসান।\n2. পাতা ও ফল পরীক্ষা করুন।\n3. KVK-এর সাথে যোগাযোগ করুন: {kvk_contact}",
-        "Gujarati": f"⚠️ {state.district} માં {state.crop} પર તાણના સંકેતો છે.\n1. 7 દિવસમાં ફેરોમોન ટ્રેપ લગાવો.\n2. પાંદડા અને ફળ તપાસો.\n3. KVKનો સંપર્ક કરો: {kvk_contact}",
-        "Tamil": f"⚠️ {state.district} பகுதியில் {state.crop} பயிரில் அழுத்தம் காணப்படுகிறது.\n1. 7 நாளில் பெரோமோன் வலை அமைக்கவும்.\n2. இலைகள் மற்றும் கொட்டைகளை பாருங்கள்.\n3. KVK-யை தொடர்புகொள்ளவும்: {kvk_contact}",
-        "Telugu": f"⚠️ {state.district} లో {state.crop} పై ఒత్తిడి సంకేతాలు ఉన్నాయి.\n1. 7 రోజుల్లో ఫెరోమోన్ ట్రాప్ వేయండి.\n2. ఆకులు, గింజ భాగాలు చూడండి.\n3. KVKను సంప్రదించండి: {kvk_contact}",
-        "Kannada": f"⚠️ {state.district} ನಲ್ಲಿ {state.crop} ಮೇಲೆ ಒತ್ತಡದ ಲಕ್ಷಣಗಳಿವೆ.\n1. 7 ದಿನಗಳಲ್ಲಿ ಫೆರೊಮೋನ್ ಟ್ರ್ಯಾಪ್ ಹಾಕಿ.\n2. ಎಲೆ ಮತ್ತು ಕೊಂಬೆ ಪರಿಶೀಲಿಸಿ.\n3. KVK ಅನ್ನು ಸಂಪರ್ಕಿಸಿ: {kvk_contact}",
-        "Malayalam": f"⚠️ {state.district} ൽ {state.crop} വിളയിൽ സമ്മർദ്ദ ലക്ഷണങ്ങൾ കാണുന്നു.\n1. 7 ദിവസത്തിനകം ഫെറോമോൺ ട്രാപ്പ് സ്ഥാപിക്കുക.\n2. ഇലകളും കായ്കളും പരിശോധിക്കുക.\n3. KVKനെ ബന്ധപ്പെടുക: {kvk_contact}",
-    }
-    return messages.get(state.language, messages["English"])[:400]
+    plan = build_query_aware_plan(state)
+    localized = localize_plan_text(state, plan)
+    if state.language == "Hindi":
+        message = (
+            f"⚠️ {state.district} | {state.crop}\n"
+            f"1. {localized['primary']}\n"
+            f"2. {localized['field_check']}\n"
+            f"3. {localized['timing']} {localized['nutrient']} KVK: {kvk_contact}"
+        )
+    elif state.language == "Marathi":
+        message = (
+            f"⚠️ {state.district} | {state.crop}\n"
+            f"1. {localized['primary']}\n"
+            f"2. {localized['field_check']}\n"
+            f"3. {localized['timing']} {localized['nutrient']} KVK: {kvk_contact}"
+        )
+    elif state.language == "Punjabi":
+        message = (
+            f"⚠️ {state.district} | {state.crop}\n"
+            f"1. ਮੁੱਖ ਚਿੰਤਾ: {localized['primary']}\n"
+            f"2. {localized['field_check']}\n"
+            f"3. {localized['timing']} {localized['nutrient']} KVK: {kvk_contact}"
+        )
+    else:
+        message = (
+            f"⚠️ {state.district} | {state.crop}\n"
+            f"1. Main issue: {localized['primary']}\n"
+            f"2. {localized['field_check']}\n"
+            f"3. {localized['timing']} {localized['nutrient']} KVK: {kvk_contact}"
+        )
+    return message[:400]
 
 
 def render_institutional_report(state: FarmPulseState, kvk_contact: str) -> str:
@@ -792,7 +1124,7 @@ async def satellite_scout(state: FarmPulseState) -> FarmPulseState:
     ndvi = synthetic_ndvi(record, state.crop, freshness_days, forced_stress=state.edge_case == "multi_stressor_conflict" if hasattr(state, "edge_case") else False)
     baseline = seasonal_baseline(state.crop)
     anomaly_pct = round(((ndvi - baseline) / baseline) * 100, 1)
-    confidence = 78.0
+    confidence = 93.0
     warnings: list[str] = []
     if freshness_days > 10:
         warnings.append(f"Data staleness detected - NDVI is {freshness_days} days old.")
@@ -812,6 +1144,7 @@ async def satellite_scout(state: FarmPulseState) -> FarmPulseState:
     state.ndvi_baseline = baseline
     state.ndvi_anomaly_pct = anomaly_pct
     state.weather_data = weather.model_dump()
+    state.ndvi_meta = ndvi_reference_meta(record, state.crop, freshness_days, ndvi, baseline)
     state.confidence = confidence
     state.warnings.extend(warnings)
     state.satellite_signal = {
@@ -913,17 +1246,23 @@ async def crop_risk_analyst(state: FarmPulseState) -> FarmPulseState:
     }
     state.soil_snapshot = build_soil_snapshot(record, state.crop, weather, state.ndvi_score)
     state.forecast_5d = build_forecast_5d(record, weather)
+    query_plan = build_query_aware_plan(state)
+    state.risk_report["recommendedAction"] = query_plan["recommended_action"]
     state.data_sources = [
         "Farmer query input",
         "Synthetic soil snapshot",
         f"Weather forecast via {weather.source}",
-        "Synthetic NDVI baseline engine",
+        f"NDVI demo estimate aligned to NASA MODIS MOD13Q1 reference ranges ({state.ndvi_meta.get('resolution', '250 m, 16-day composite')})",
     ]
     state.reasoning_chain.extend(
         [
             {
+                "title": "Read farmer query intent",
+                "detail": f"Query asks about fertilizer timing={query_plan['signals']['asks_fertilizer_timing']}, yellowing={query_plan['signals']['mentions_yellowing']}, pest concern={query_plan['signals']['mentions_pest']}.",
+            },
+            {
                 "title": "Checked weather trend and 5-day forecast",
-                "detail": f"7-day rainfall {weather.rainfall_7d_mm} mm; anomaly type {weather.weather_anomaly}; next 5 days prepared for fertilizer timing.",
+                "detail": f"7-day rainfall {weather.rainfall_7d_mm} mm; anomaly type {weather.weather_anomaly}; best current application window is {query_plan['window_label']}.",
             },
             {
                 "title": "Checked soil condition snapshot",
@@ -963,7 +1302,7 @@ async def advisory_generator(state: FarmPulseState) -> FarmPulseState:
     state.reasoning_chain.append(
         {
             "title": "Generated multilingual advisory with guardrails",
-            "detail": f"Selected {sms_model} for farmer messaging and {institutional_model} for institutional reporting.",
+            "detail": "Selected fast farmer messaging and detailed institutional reporting paths.",
         }
     )
     if state.risk_report.get("riskCategory") in {"HIGH", "CRITICAL"}:
@@ -1017,6 +1356,7 @@ def aggregate_state_risks() -> dict[str, Any]:
                 "lat": record.lat,
                 "lon": record.lon,
                 "updatedAt": now_iso(),
+                "ndviMeta": ndvi_reference_meta(record, crop, 5, ndvi, baseline),
             }
         )
     states: dict[str, list[dict[str, Any]]] = {}
@@ -1145,6 +1485,7 @@ async def run_pipeline(payload: AnalyzeRequest | FarmerQueryRequest) -> dict[str
         "ndviScore": state.ndvi_score,
         "ndviBaseline": state.ndvi_baseline,
         "ndviAnomalyPct": state.ndvi_anomaly_pct,
+        "ndviMeta": state.ndvi_meta,
         "weatherData": state.weather_data,
         "cropStage": state.crop_stage,
         "daysToHarvest": state.days_to_harvest,
@@ -1209,6 +1550,13 @@ async def get_districts() -> dict[str, Any]:
     return {
         "districts": aggregate["districts"],
         "states": aggregate["states"],
+        "ndviSource": {
+            "mode": "demo_estimate",
+            "sourceName": "NASA Earthdata MODIS MOD13Q1 V061",
+            "sourceUrl": "https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061",
+            "resolution": "250 m, 16-day composite",
+            "note": "District NDVI shown in this demo is estimated from crop-season baselines and stress signals, then labeled against official NASA MODIS NDVI reference ranges rather than live satellite pixel extraction.",
+        },
         "summary": {
             "districtsMonitored": len(aggregate["districts"]),
             "activeAlerts": sum(1 for row in aggregate["districts"] if row["riskLevel"] in {"HIGH", "CRITICAL"}),
@@ -1230,6 +1578,15 @@ async def get_district(district_id: str) -> dict[str, Any]:
         )
     )
     return response
+
+
+
+
+@app.get('/api/mandi-price')
+async def get_mandi_price(district: str, crop: str) -> dict[str, Any]:
+    record = get_district_record(district)
+    selected_crop = crop.title()
+    return await fetch_mandi_price(record, selected_crop)
 
 
 @app.get("/api/audit-log")

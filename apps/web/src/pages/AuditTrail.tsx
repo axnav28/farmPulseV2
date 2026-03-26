@@ -21,7 +21,7 @@ export default function AuditTrail() {
       <PageHeader
         eyebrow="Auditability"
         title="Full Agent Audit Trail"
-        description="Every agent action is timestamped, model-routed, confidence-scored, and exportable, so judges can inspect exactly how each decision was made."
+        description="Every agent action is timestamped, confidence-scored, and exportable, so judges can inspect exactly how each decision was made."
         action={
           <a
             href={exportAuditLogUrl()}
@@ -47,8 +47,6 @@ export default function AuditTrail() {
                 <th className="px-3 py-3">Agent</th>
                 <th className="px-3 py-3">Action</th>
                 <th className="px-3 py-3">District</th>
-                <th className="px-3 py-3">Model</th>
-                <th className="px-3 py-3">Tokens</th>
                 <th className="px-3 py-3">Confidence</th>
                 <th className="px-3 py-3">Escalation</th>
               </tr>
@@ -63,8 +61,6 @@ export default function AuditTrail() {
                     <p className="mt-1 max-w-md text-xs leading-5 text-text-muted">{entry.outputSummary}</p>
                   </td>
                   <td className="px-3 py-4 text-text-main">{entry.district}</td>
-                  <td className="px-3 py-4 font-mono text-text-main">{entry.modelUsed}</td>
-                  <td className="px-3 py-4 text-text-main">{entry.tokensConsumed}</td>
                   <td className="px-3 py-4 text-text-main">{entry.confidence}%</td>
                   <td className="px-3 py-4 text-text-main">{entry.escalation ? 'Yes' : 'No'}</td>
                 </tr>

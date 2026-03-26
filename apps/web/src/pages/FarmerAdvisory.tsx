@@ -1,12 +1,80 @@
-import { useEffect, useMemo, useState } from 'react';
-import { CloudRain, Droplets, Leaf, Send, Waves } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CloudRain, Droplets, Leaf, Mic, Send, Square, Waves } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
 import { createEventSource, fetchDistricts, runFarmerQuery } from '../lib/api';
 import type { AgentEvent, AnalysisResponse, DistrictsResponse, ForecastDay } from '../types/farmpulse';
 
-const defaultQuery = 'माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?';
+type BrowserSpeechRecognitionEvent = {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  }
+}
+
+const sampleQueries: Record<string, string> = {
+  Auto: 'माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?',
+  Marathi: 'माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?',
+  Hindi: 'मेरी कपास की फसल की पत्तियां पीली पड़ रही हैं। खाद कब डालूं?',
+  Punjabi: 'ਮੇਰੀ ਕਪਾਹ ਦੀ ਫਸਲ ਦੇ ਪੱਤੇ ਪੀਲੇ ਹੋ ਰਹੇ ਹਨ। ਖਾਦ ਕਦੋਂ ਪਾਵਾਂ?',
+  English: 'My cotton crop leaves are turning yellow. When should I apply fertilizer?',
+  Bengali: 'আমার তুলার পাতাগুলো হলুদ হয়ে যাচ্ছে। সার কখন দেব?',
+  Gujarati: 'મારી કપાસની પાંદડીઓ પીળી પડી રહી છે. ખાતર ક્યારે આપવું?',
+  Tamil: 'என் பருத்தி பயிரின் இலைகள் மஞ்சளாகின்றன. உரத்தை எப்போது இட வேண்டும்?',
+  Telugu: 'నా పత్తి పంట ఆకులు పసుపుగా మారుతున్నాయి. ఎరువు ఎప్పుడు వేయాలి?',
+  Kannada: 'ನನ್ನ ಹತ್ತಿ ಬೆಳೆ ಎಲೆಗಳು ಹಳದಿಯಾಗುತ್ತಿವೆ. ರಸಗೊಬ್ಬರವನ್ನು ಯಾವಾಗ ಹಾಕಬೇಕು?',
+  Malayalam: 'എന്റെ പരുത്തി വിളയുടെ ഇലകൾ മഞ്ഞയായി മാറുന്നു. വളം എപ്പോൾ ഇടണം?',
+};
+
+const speechLanguageMap: Record<string, string> = {
+  Auto: 'mr-IN',
+  Marathi: 'mr-IN',
+  Hindi: 'hi-IN',
+  Punjabi: 'pa-IN',
+  English: 'en-IN',
+  Bengali: 'bn-IN',
+  Gujarati: 'gu-IN',
+  Tamil: 'ta-IN',
+  Telugu: 'te-IN',
+  Kannada: 'kn-IN',
+  Malayalam: 'ml-IN',
+};
+
+const defaultQuery = sampleQueries.Marathi;
+const englishDemoQuery = sampleQueries.English;
+const hindiDemoQuery = sampleQueries.Hindi;
 const languageOptions = ['Auto', 'Marathi', 'Hindi', 'Punjabi', 'English', 'Bengali', 'Gujarati', 'Tamil', 'Telugu', 'Kannada', 'Malayalam'];
+
+function getSampleQuery(language: string, districtLanguage?: string) {
+  if (language === 'Auto') {
+    return sampleQueries[districtLanguage ?? 'Marathi'] ?? sampleQueries.Auto;
+  }
+  return sampleQueries[language] ?? sampleQueries.Auto;
+}
+
+function speechLanguageFor(language: string, state?: string) {
+  if (language === 'Auto') {
+    if (state === 'Punjab') return 'pa-IN';
+    if (state === 'Maharashtra') return 'mr-IN';
+    return 'hi-IN';
+  }
+  return speechLanguageMap[language] ?? 'hi-IN';
+}
 
 export default function FarmerAdvisory() {
   const [districtsData, setDistrictsData] = useState<DistrictsResponse | null>(null);
@@ -17,11 +85,21 @@ export default function FarmerAdvisory() {
   const [response, setResponse] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [recentEvents, setRecentEvents] = useState<AgentEvent[]>([]);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoResponses, setDemoResponses] = useState<{ English: AnalysisResponse | null; Hindi: AnalysisResponse | null }>({ English: null, Hindi: null });
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
     fetchDistricts()
       .then(setDistrictsData)
       .catch(() => toast.error('Could not load districts'));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setVoiceSupported(Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
   }, []);
 
   const currentDistrict = useMemo(
@@ -30,6 +108,97 @@ export default function FarmerAdvisory() {
   );
 
   const bestDay = useMemo(() => selectBestDay(response?.forecast5d ?? []), [response]);
+  const sampleQuery = useMemo(
+    () => getSampleQuery(language, currentDistrict?.state === 'Maharashtra' ? 'Marathi' : currentDistrict?.state === 'Punjab' ? 'Punjabi' : 'Hindi'),
+    [language, currentDistrict],
+  );
+
+  useEffect(() => {
+    setQuery((current) => {
+      const knownSamples = new Set(Object.values(sampleQueries));
+      if (!current.trim() || knownSamples.has(current)) {
+        return sampleQuery;
+      }
+      return current;
+    });
+  }, [sampleQuery]);
+
+  useEffect(() => {
+    setDemoResponses({ English: null, Hindi: null });
+  }, [district, crop]);
+
+  useEffect(() => () => recognitionRef.current?.stop(), []);
+
+  function startVoiceInput() {
+    if (typeof window === 'undefined') return;
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      toast.error('Voice input is not supported in this browser');
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = speechLanguageFor(language, currentDistrict?.state);
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? '')
+        .join(' ')
+        .trim();
+
+      if (transcript) {
+        setQuery(transcript);
+        toast.success('Voice input captured');
+      }
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      toast.error(event.error === 'not-allowed' ? 'Microphone permission denied' : 'Voice input failed');
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
+  function stopVoiceInput() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
+  async function loadBilingualDemo() {
+    setDemoLoading(true);
+    try {
+      const [english, hindi] = await Promise.all([
+        runFarmerQuery({
+          district,
+          crop,
+          language: 'English',
+          farmer_query: englishDemoQuery,
+          run_id: crypto.randomUUID(),
+        }),
+        runFarmerQuery({
+          district,
+          crop,
+          language: 'Hindi',
+          farmer_query: hindiDemoQuery,
+          run_id: crypto.randomUUID(),
+        }),
+      ]);
+      setDemoResponses({ English: english, Hindi: hindi });
+      toast.success('English and Hindi phone demo ready');
+    } catch {
+      toast.error('Could not load bilingual demo');
+    } finally {
+      setDemoLoading(false);
+    }
+  }
 
   async function execute() {
     const runId = crypto.randomUUID();
@@ -66,7 +235,7 @@ export default function FarmerAdvisory() {
     setDistrict('Yavatmal');
     setCrop('Cotton');
     setLanguage('Auto');
-    setQuery(defaultQuery);
+    setQuery(getSampleQuery('Auto', 'Marathi'));
     setResponse(null);
     setRecentEvents([]);
     toast.success('Sample scenario loaded');
@@ -77,14 +246,50 @@ export default function FarmerAdvisory() {
       <PageHeader
         eyebrow='Farmer Help'
         title='Multilingual Farmer Advisory'
-        description='A Vercel-ready multilingual advisory flow. Enter the farmer query in a supported Indian language and get the response back in that same language.'
+        description='Farmers can type or speak their question, and the advisory is returned in the same language with local soil, NDVI, pest, and forecast context.'
       />
 
       <div className='grid gap-4 xl:grid-cols-3'>
         <StepCard number='1' title='Choose location' text='Select district, crop, and preferred language or keep auto detection.' />
-        <StepCard number='2' title='Type the query' text='Paste the farmer question directly in the text box.' />
+        <StepCard number='2' title='Type or speak the query' text='Use the browser microphone when typing is difficult on mobile.' />
         <StepCard number='3' title='Get advisory' text='See soil, weather, reasoning, and the farmer-facing answer in the same language.' />
       </div>
+
+      <section className='rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
+        <div className='flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center'>
+          <div className='min-w-0'>
+            <p className='text-sm font-semibold text-text-main'>Smartphone multilingual demo</p>
+            <p className='mt-1 max-w-3xl text-sm leading-6 text-text-muted'>The same farmer problem is shown side-by-side in English and Hindi, with live district-aware responses generated from the current district and crop selection.</p>
+          </div>
+          <button
+            type='button'
+            onClick={loadBilingualDemo}
+            disabled={demoLoading}
+            className='rounded-full border border-border bg-surface-2 px-4 py-2 text-sm font-semibold text-text-main disabled:opacity-60'
+          >
+            {demoLoading ? 'Generating demo...' : 'Generate English + Hindi demo'}
+          </button>
+        </div>
+
+        <div className='mt-5 grid gap-4 xl:grid-cols-2'>
+          <PhonePreviewCard
+            language='English'
+            district={district}
+            crop={crop}
+            query={englishDemoQuery}
+            response={demoResponses.English}
+            loading={demoLoading}
+          />
+          <PhonePreviewCard
+            language='Hindi'
+            district={district}
+            crop={crop}
+            query={hindiDemoQuery}
+            response={demoResponses.Hindi}
+            loading={demoLoading}
+          />
+        </div>
+      </section>
 
       <div className='grid min-h-0 gap-6 2xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]'>
         <section className='min-h-0 space-y-6'>
@@ -92,7 +297,7 @@ export default function FarmerAdvisory() {
             <div className='flex flex-col items-start justify-between gap-3 sm:flex-row'>
               <div className='min-w-0'>
                 <p className='text-sm font-semibold text-text-main'>Enter the farmer question</p>
-                <p className='mt-1 text-sm leading-6 text-text-muted'>Text-only flow for reliable Vercel deployment.</p>
+                <p className='mt-1 text-sm leading-6 text-text-muted'>Text-only fallback is still available, but microphone capture now works directly in the browser.</p>
               </div>
               <button
                 type='button'
@@ -103,7 +308,7 @@ export default function FarmerAdvisory() {
               </button>
             </div>
 
-            <div className='mt-5 grid gap-4 lg:grid-cols-2'>
+            <div className='mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-4'>
               <SelectField label='District' value={district} onChange={setDistrict} options={(districtsData?.districts ?? []).map((item) => item.district)} />
               <SelectField label='Crop' value={crop} onChange={setCrop} options={['Cotton', 'Wheat', 'Rice', 'Soybean', 'Sugarcane', 'Moringa']} />
               <SelectField label='Language' value={language} onChange={setLanguage} options={languageOptions} />
@@ -111,15 +316,33 @@ export default function FarmerAdvisory() {
             </div>
 
             <div className='mt-5 rounded-3xl border border-border bg-surface-2 p-4'>
-              <p className='text-sm font-semibold text-text-main'>Farmer query</p>
-              <p className='mt-1 text-sm text-text-muted'>Use Marathi, Hindi, Punjabi, English, or another supported language directly in text.</p>
+              <div className='flex items-start justify-between gap-4'>
+                <div>
+                  <p className='text-sm font-semibold text-text-main'>Farmer query</p>
+                  <p className='mt-1 text-sm text-text-muted'>Use Marathi, Hindi, Punjabi, English, or another supported language directly in text, or tap the mic to speak.</p>
+                </div>
+                <button
+                  type='button'
+                  onClick={isListening ? stopVoiceInput : startVoiceInput}
+                  disabled={!voiceSupported}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${isListening ? 'bg-red-50 text-red-700' : 'bg-white text-text-main'} border border-slate-200 disabled:opacity-50`}
+                >
+                  {isListening ? <Square size={15} /> : <Mic size={15} />}
+                  {isListening ? 'Stop' : 'Voice input'}
+                </button>
+              </div>
               <textarea
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                rows={8}
-                className='mt-4 w-full rounded-2xl border border-border bg-background px-4 py-4 text-base leading-7 text-text-main outline-none'
-                placeholder='Type the farmer question here'
+                rows={5}
+                className='mt-4 w-full resize-none rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-[15px] leading-7 text-text-main shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100'
+                placeholder={sampleQuery}
               />
+              <p className='mt-3 text-xs text-text-muted'>
+                {voiceSupported
+                  ? `Mic language follows the selected language. Current voice locale: ${speechLanguageFor(language, currentDistrict?.state)}`
+                  : 'Browser voice input is not supported here. Chrome and Android browsers work best.'}
+              </p>
             </div>
 
             <button
@@ -154,7 +377,7 @@ export default function FarmerAdvisory() {
                 <div className='mt-5 rounded-3xl border border-dashed border-border bg-surface-2 p-6'>
                   <p className='text-lg font-semibold text-text-main'>The answer will appear here.</p>
                   <p className='mt-3 text-sm leading-7 text-text-muted'>
-                    Type the farmer question and FarmPulse will combine soil conditions, district stress signal, crop stage, and the 5-day forecast before returning a same-language recommendation.
+                    Ask by voice or text and FarmPulse will combine soil conditions, district stress signal, crop stage, and the 5-day forecast before returning a same-language recommendation.
                   </p>
                   <div className='mt-5 grid gap-3 sm:grid-cols-3'>
                     <MiniHint title='Language' text='Auto-detected or manually selected' />
@@ -239,7 +462,7 @@ export default function FarmerAdvisory() {
 }
 
 const defaultStatus: AgentEvent[] = [
-  { agent: 'Text Input', step: 'ready', status: 'IDLE', message: 'Waiting for the farmer query.', timestamp: '', run_id: '' },
+  { agent: 'Voice or Text Input', step: 'ready', status: 'IDLE', message: 'Waiting for the farmer query.', timestamp: '', run_id: '' },
   { agent: 'Soil + Weather Check', step: 'ready', status: 'IDLE', message: 'Will compare soil conditions with the next 5 days of weather.', timestamp: '', run_id: '' },
   { agent: 'Advisory Generator', step: 'ready', status: 'IDLE', message: 'Will return the answer in the same language as the farmer.', timestamp: '', run_id: '' },
 ];
@@ -267,11 +490,16 @@ function SelectField({ label, value, onChange, options }: { label: string; value
   return (
     <label className='block'>
       <span className='text-xs font-semibold uppercase tracking-[0.24em] text-text-muted'>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className='mt-2 w-full rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-text-main outline-none'>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
+      <div className='mt-2 relative'>
+        <select value={value} onChange={(event) => onChange(event.target.value)} className='w-full appearance-none rounded-[22px] border border-slate-200 bg-white px-4 py-3 pr-10 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100'>
+          {options.map((option) => (
+            <option key={option} value={option}>{option}</option>
+          ))}
+        </select>
+        <div className='pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400'>
+          <span className='text-xs'>▼</span>
+        </div>
+      </div>
     </label>
   );
 }
@@ -280,7 +508,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <span className='text-xs font-semibold uppercase tracking-[0.24em] text-text-muted'>{label}</span>
-      <div className='mt-2 rounded-2xl border border-border bg-surface-2 px-4 py-3 text-sm text-text-main'>{value}</div>
+      <div className='mt-2 rounded-[22px] border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)]'>{value}</div>
     </div>
   );
 }
@@ -330,6 +558,56 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className='min-w-0 rounded-2xl border border-border bg-surface-2 p-4'>
       <p className='text-xs font-semibold uppercase tracking-[0.2em] text-text-muted'>{label}</p>
       <p className='mt-2 break-words text-sm leading-7 text-text-main'>{value}</p>
+    </div>
+  );
+}
+
+function PhonePreviewCard({
+  language,
+  district,
+  crop,
+  query,
+  response,
+  loading,
+}: {
+  language: string;
+  district: string;
+  crop: string;
+  query: string;
+  response: AnalysisResponse | null;
+  loading: boolean;
+}) {
+  return (
+    <div className='rounded-[28px] border border-border bg-background p-4'>
+      <div className='mx-auto w-[300px] rounded-[38px] bg-slate-950 p-[9px] shadow-[0_24px_60px_rgba(15,23,42,0.24)]'>
+        <div className='overflow-hidden rounded-[30px] border border-slate-800 bg-white'>
+          <div className='flex items-center justify-between bg-slate-950 px-5 py-3 text-[11px] font-medium text-white'>
+            <span>9:41</span>
+            <div className='h-5 w-28 rounded-full bg-black/70' />
+            <span>5G</span>
+          </div>
+          <div className='border-b border-slate-200 bg-white px-4 py-3'>
+            <p className='text-sm font-semibold text-slate-900'>{language} farmer view</p>
+            <p className='text-xs text-slate-500'>{district} • {crop}</p>
+          </div>
+          <div className='flex min-h-[470px] flex-col justify-between bg-[linear-gradient(180deg,#f8fafc_0%,#eef6f1_100%)] p-3'>
+            <div className='space-y-3 min-w-0'>
+              <div className='ml-auto max-w-[84%] break-words rounded-[20px] rounded-tr-md bg-emerald-600 px-3.5 py-2.5 text-[13px] leading-5 text-white shadow-sm'>
+                {query}
+              </div>
+              <div className='max-w-[90%] break-words rounded-[20px] rounded-tl-md bg-white px-3.5 py-2.5 text-[13px] leading-5 text-slate-800 shadow-sm'>
+                {loading ? 'Generating district-aware answer...' : response?.advisoryWhatsapp ?? 'Tap the demo button to generate a live answer for this district.'}
+              </div>
+            </div>
+            <div className='space-y-2.5'>
+              <div className='rounded-2xl border border-slate-200 bg-white/90 px-3.5 py-2.5 text-[11px] leading-4.5 text-slate-600'>
+                {response ? `Confidence ${response.confidence.toFixed(0)}% • ${response.riskReport.rootCause}` : 'The response updates with the selected district and crop, so the advice changes when local weather, soil, and pest conditions change.'}
+              </div>
+              <div className='mx-auto h-1.5 w-28 rounded-full bg-slate-300' />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
