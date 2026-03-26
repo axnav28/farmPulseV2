@@ -1,0 +1,84 @@
+# FarmPulse AI Full Guide
+
+FarmPulse AI is a React + TypeScript + Vite frontend with a FastAPI backend. It simulates a four-agent crop intelligence system for Indian agriculture:
+
+1. Satellite Stress Scout
+- Ingests district-level NDVI-style stress signals.
+- Compares current values against crop-season baselines.
+- Flags anomalies and data staleness.
+
+2. Crop Risk Analyst
+- Combines stress signals with weather anomalies, crop stage, and pest-risk heuristics.
+- Produces a structured risk report with confidence and escalation behavior.
+
+3. Advisory Generator
+- Generates farmer-facing advisories in Marathi, Hindi, Punjabi, or English.
+- Produces SMS, WhatsApp, and institutional outputs.
+- Handles unknown crops and uncertainty by escalating instead of guessing.
+
+4. Institutional Reporter and Orchestrator
+- Aggregates risk across districts and states.
+- Produces insurer, FPO, and government-style summaries.
+- Maintains audit logs and escalation records.
+
+## Frontend Routes
+
+### /overview
+Command center dashboard with:
+- live agent statuses
+- summary statistics
+- state and district risk views
+- recent agent activity feed
+- one-click full analysis flow
+
+### /districts
+District risk explorer with:
+- searchable district table
+- risk levels and root causes
+- district detail side panel
+- advisory generation actions
+
+### /farmer-advisory
+The main demo route.
+Key experience:
+- select district, crop, and language
+- type the farmer query directly
+- show soil conditions and 5-day forecast
+- generate same-language farmer guidance
+- show the reasoning steps and summary
+
+Primary sample query:
+"माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?"
+
+### /institutional
+Institutional reporting with:
+- FPO briefing summaries
+- insurance pre-claim signals
+- government early-warning view
+
+### /audit
+Audit log page with:
+- chronological agent actions
+- timestamps
+- model used
+- tokens consumed
+- confidence
+- escalation status
+
+## Backend APIs
+- GET /health: health check
+- GET /api/districts: district and state summaries
+- GET /api/district/{id}: single district detail
+- POST /api/analyze: full pipeline execution
+- POST /api/farmer-query: farmer-focused run
+- GET /api/audit-log: audit trail entries
+- POST /api/simulate-edge-case: triggers demo guardrail scenarios
+
+## Demo Scenario
+The flagship story uses Yavatmal, Maharashtra with Cotton and Marathi language selection.
+The system evaluates NDVI stress, soil moisture, nitrogen context, the upcoming 5-day weather pattern, crop stage, and pest-risk cues before returning a Marathi recommendation.
+
+## Important Behavior
+- The frontend is a client-rendered SPA.
+- This file exists to help AI agents, crawlers, and fetchers understand the site without executing JavaScript.
+- For live UI interaction, open the website in a browser.

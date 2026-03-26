@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--bg-main);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border-color);
+  --color-primary: #1a3a2a;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --font-sans: "Sora", "Segoe UI", sans-serif;
+}
+
+@layer base {
+  :root {
+    --bg-main: #edf3ed;
+    --surface-1: rgba(255, 255, 255, 0.9);
+    --surface-2: #f5f8f4;
+    --border-color: rgba(26, 58, 42, 0.12);
+    --text-main: #173624;
+    --text-muted: #55705f;
+  }
+
+  .dark {
+    --bg-main: #0d1d13;
+    --surface-1: rgba(22, 44, 31, 0.92);
+    --surface-2: rgba(18, 35, 25, 0.98);
+    --border-color: rgba(240, 245, 240, 0.08);
+    --text-main: #edf4ee;
+    --text-muted: #adc0b1;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top left, rgba(26, 58, 42, 0.12), transparent 28%),
+      linear-gradient(180deg, #eef4ef 0%, #e8efe9 100%);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .leaflet-container {
+    background: #d8e7d9;
+  }
+}

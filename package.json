@@ -1,0 +1,10 @@
+{
+  "name": "farmpulse-agentic-platform",
+  "private": true,
+  "scripts": {
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:web": "npm --prefix apps/web run build",
+    "lint:web": "npm --prefix apps/web run lint",
+    "dev:api": "uvicorn apps.api.main:app --reload --port 8000"
+  }
+}
