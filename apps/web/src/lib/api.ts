@@ -1,6 +1,6 @@
 import type { AnalysisResponse, AuditEntry, DistrictsResponse, MandiPriceResponse } from '../types/farmpulse';
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? '';
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '');
 const AUDIT_CACHE_KEY = 'farmpulse.audit.entries';
 
 const defaultQuery = 'माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?';

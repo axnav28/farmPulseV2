@@ -48,6 +48,30 @@ If you later want true observed district NDVI instead of demo-estimated values, 
 
 This version removes local speech-to-text and speech synthesis so the project is easier to deploy on Vercel. The farmer advisory flow is text-based and still supports multilingual responses through language detection and district-aware routing.
 
+## Render Backend Deployment
+
+The frontend can stay on Vercel, but the FastAPI backend is a better fit for Render than for Vercel serverless. This repo now includes a root [render.yaml](/Users/arnav/Desktop/code/FarmPulse AI/render.yaml) Blueprint for the API service.
+
+Render setup in this repo:
+
+- `rootDir: apps/api` so the Python service builds from the API app only. Render's monorepo docs note that files outside the configured `rootDir` are not available to the service at build or runtime.
+- `buildCommand: pip install -r requirements.txt`
+- `startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT`
+- `healthCheckPath: /health`
+- `FARMPULSE_DB_PATH=/tmp/farmpulse.db` for a simple demo database path
+
+Important persistence note:
+
+- Render documents that the default filesystem is ephemeral. That means the current SQLite audit database is suitable for demos, but not for durable production audit history unless you attach a persistent disk or move to an external database.
+
+To switch the Vercel frontend to the Render backend, set this environment variable in the Vercel web project:
+
+```env
+VITE_API_BASE=https://your-render-service.onrender.com
+```
+
+A frontend example file is included at [apps/web/.env.example](/Users/arnav/Desktop/code/FarmPulse AI/apps/web/.env.example).
+
 ## Local Development
 
 ### 1. Install the web app
