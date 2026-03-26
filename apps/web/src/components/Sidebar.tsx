@@ -8,8 +8,8 @@ const navigation = [
   { name: 'Channels', to: '/channel-fallback', icon: MessageSquareText },
   { name: 'District Data', to: '/districts', icon: Globe2 },
   { name: 'Mandi Prices', to: '/mandi-prices', icon: TrendingUp },
-  { name: 'Reports', to: '/institutional', icon: FileStack },
-  { name: 'Audit', to: '/audit', icon: AlertCircle },
+  { name: 'INSTITUTIONAL reports', to: '/institutional', icon: FileStack },
+  { name: 'Audit Logs', to: '/audit', icon: AlertCircle },
 ];
 
 export default function Sidebar() {
