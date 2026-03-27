@@ -85,6 +85,7 @@ export interface AgentEvent {
   message: string;
   timestamp: string;
   run_id: string;
+  confidence?: number | null;
 }
 
 export interface ForecastDay {

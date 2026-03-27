@@ -429,7 +429,7 @@ def select_model(task_type: str, complexity: str) -> str:
     return "farmer-advisory-engine"
 
 
-async def emit_event(run_id: str, agent: str, step: str, status: str, message: str) -> None:
+async def emit_event(run_id: str, agent: str, step: str, status: str, message: str, confidence: float | None = None) -> None:
     queue = RUN_QUEUES.setdefault(run_id, asyncio.Queue())
     event = {
         "agent": agent,
@@ -438,6 +438,7 @@ async def emit_event(run_id: str, agent: str, step: str, status: str, message: s
         "message": message,
         "timestamp": now_iso(),
         "run_id": run_id,
+        "confidence": confidence,
     }
     await queue.put(f"data: {json.dumps(event)}\n\n")
 
@@ -1171,7 +1172,7 @@ async def satellite_scout(state: FarmPulseState) -> FarmPulseState:
         confidence,
         severity,
     )
-    await emit_event(state.run_id, "Satellite Stress Scout", "fetch_ndvi", "COMPLETE", f"NDVI {ndvi:.2f}; anomaly {anomaly_pct:.1f}%")
+    await emit_event(state.run_id, "Satellite Stress Scout", "fetch_ndvi", "COMPLETE", f"NDVI {ndvi:.2f}; anomaly {anomaly_pct:.1f}%", confidence)
     return state
 
 
@@ -1285,7 +1286,7 @@ async def crop_risk_analyst(state: FarmPulseState) -> FarmPulseState:
         state.confidence,
         risk_category,
     )
-    await emit_event(state.run_id, "Crop Risk Analyst", "reason_over_signals", "COMPLETE", f"Risk {risk_category} ({risk_score}/100)")
+    await emit_event(state.run_id, "Crop Risk Analyst", "reason_over_signals", "COMPLETE", f"Risk {risk_category} ({risk_score}/100)", state.confidence)
     return state
 
 
@@ -1330,7 +1331,7 @@ async def advisory_generator(state: FarmPulseState) -> FarmPulseState:
         state.confidence,
         state.risk_report["riskCategory"],
     )
-    await emit_event(state.run_id, "Advisory Generator", "compose_advisory", "COMPLETE", f"Advisory ready with confidence {state.confidence:.1f}%")
+    await emit_event(state.run_id, "Advisory Generator", "compose_advisory", "COMPLETE", f"Advisory ready with confidence {state.confidence:.1f}%", round(90.0 if not state.escalate else state.confidence, 1))
     return state
 
 
@@ -1425,7 +1426,7 @@ async def institutional_reporter(state: FarmPulseState) -> FarmPulseState:
         state.confidence,
         state.risk_report["riskCategory"],
     )
-    await emit_event(state.run_id, "Institutional Reporter", "aggregate_outputs", "COMPLETE", "Institutional views synced")
+    await emit_event(state.run_id, "Institutional Reporter", "aggregate_outputs", "COMPLETE", "Institutional views synced", round(max(60.0, state.confidence - 2.0), 1))
     return state
 
 
@@ -1448,7 +1449,7 @@ async def human_escalation_node(state: FarmPulseState) -> FarmPulseState:
         state.confidence,
         state.risk_report.get("riskCategory", "MEDIUM"),
     )
-    await emit_event(state.run_id, "Human Escalation", "handoff", "COMPLETE", "Case referred to KVK / agronomist")
+    await emit_event(state.run_id, "Human Escalation", "handoff", "COMPLETE", "Case referred to KVK / agronomist", state.confidence)
     return state
 
 

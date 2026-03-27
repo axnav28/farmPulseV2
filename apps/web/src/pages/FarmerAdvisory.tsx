@@ -67,13 +67,14 @@ type AgentFlowStep = {
   status: AgentStatus;
   message: string;
   step: string;
+  confidence?: number | null;
 };
 
 const defaultAgentFlow: AgentFlowStep[] = [
-  { agent: 'Satellite Stress Scout', title: '1. Satellite Stress Scout', status: 'IDLE', message: 'Waiting to ingest NDVI, data freshness, and district weather context.', step: 'ready' },
-  { agent: 'Crop Risk Analyst', title: '2. Crop Risk Analyst', status: 'IDLE', message: 'Waiting to score risk, infer root cause, and decide escalation.', step: 'ready' },
-  { agent: 'Advisory Generator', title: '3. Advisory Generator', status: 'IDLE', message: 'Waiting to generate the farmer SMS, WhatsApp answer, and model route.', step: 'ready' },
-  { agent: 'Institutional Reporter', title: '4. Institutional Reporter', status: 'IDLE', message: 'Waiting to attach the institutional report and audit-ready record.', step: 'ready' },
+  { agent: 'Satellite Stress Scout', title: '1. Satellite Stress Scout', status: 'IDLE', message: 'Waiting to ingest NDVI, data freshness, and district weather context.', step: 'ready', confidence: null },
+  { agent: 'Crop Risk Analyst', title: '2. Crop Risk Analyst', status: 'IDLE', message: 'Waiting to score risk, infer root cause, and decide escalation.', step: 'ready', confidence: null },
+  { agent: 'Advisory Generator', title: '3. Advisory Generator', status: 'IDLE', message: 'Waiting to generate the farmer SMS, WhatsApp answer, and model route.', step: 'ready', confidence: null },
+  { agent: 'Institutional Reporter', title: '4. Institutional Reporter', status: 'IDLE', message: 'Waiting to attach the institutional report and audit-ready record.', step: 'ready', confidence: null },
 ];
 
 function getSampleQuery(language: string, districtLanguage?: string) {
@@ -251,7 +252,7 @@ export default function FarmerAdvisory() {
     source.onmessage = (event) => {
       const payload = JSON.parse(event.data) as AgentEvent;
       if (payload.agent !== 'System') {
-        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
+        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step, confidence: payload.confidence ?? item.confidence ?? null } : item)));
       }
     };
 
@@ -325,7 +326,7 @@ export default function FarmerAdvisory() {
     source.onmessage = (event) => {
       const payload = JSON.parse(event.data) as AgentEvent;
       if (payload.agent !== 'System') {
-        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
+        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step, confidence: payload.confidence ?? item.confidence ?? null } : item)));
       }
     };
 
@@ -748,7 +749,12 @@ function AgentFlowCard({ item }: { item: AgentFlowStep }) {
           <p className='text-sm font-semibold text-text-main'>{item.title}</p>
           <p className='mt-1 text-xs uppercase tracking-[0.18em] text-text-muted'>{item.agent}</p>
         </div>
-        <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${badge}`}>{item.status}</span>
+        <div className='flex flex-col items-end gap-2'>
+          <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${badge}`}>{item.status}</span>
+          <span className='rounded-full border border-border bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-text-main'>
+            {item.confidence != null ? `Confidence ${Math.round(item.confidence)}%` : 'Confidence pending'}
+          </span>
+        </div>
       </div>
       <p className='mt-2 text-sm leading-6 text-text-muted'>{item.message}</p>
     </div>
