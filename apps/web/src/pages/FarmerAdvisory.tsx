@@ -106,6 +106,7 @@ export default function FarmerAdvisory() {
   const [demoResponses, setDemoResponses] = useState<{ English: AnalysisResponse | null; Hindi: AnalysisResponse | null }>({ English: null, Hindi: null });
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isPlayingSampleVoice, setIsPlayingSampleVoice] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -149,7 +150,12 @@ export default function FarmerAdvisory() {
     setActiveRunId('');
   }, [district, crop]);
 
-  useEffect(() => () => recognitionRef.current?.stop(), []);
+  useEffect(() => () => {
+    recognitionRef.current?.stop();
+    if (typeof window !== 'undefined') {
+      window.speechSynthesis?.cancel();
+    }
+  }, []);
 
   function startVoiceInput() {
     if (typeof window === 'undefined') return;
@@ -194,6 +200,89 @@ export default function FarmerAdvisory() {
     setIsListening(false);
   }
 
+  async function playSampleVoiceDemo() {
+    const marathiSample = sampleQueries.Marathi;
+    setLanguage('Marathi');
+    setDistrict('Yavatmal');
+    setCrop('Cotton');
+    setQuery(marathiSample);
+    setIsPlayingSampleVoice(true);
+
+    const finish = async () => {
+      setIsPlayingSampleVoice(false);
+      toast.success('Marathi voice note transcribed into the query box');
+      await runPipelineWithQuery(marathiSample, 'Marathi');
+    };
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(marathiSample);
+        utterance.lang = 'mr-IN';
+        utterance.rate = 0.92;
+        utterance.pitch = 1;
+        utterance.onend = () => {
+          void finish();
+        };
+        utterance.onerror = () => {
+          window.setTimeout(() => {
+            void finish();
+          }, 1200);
+        };
+        window.speechSynthesis.speak(utterance);
+        return;
+      } catch {
+        // Fall through to timer-based simulation.
+      }
+    }
+
+    window.setTimeout(() => {
+      void finish();
+    }, 1200);
+  }
+
+  async function runPipelineWithQuery(farmerQuery: string, forcedLanguage = language) {
+    const runId = crypto.randomUUID();
+    setLoading(true);
+    setResponse(null);
+    setActiveRunId(runId);
+    setAgentFlow(defaultAgentFlow);
+    const source = createEventSource(runId);
+    source.onmessage = (event) => {
+      const payload = JSON.parse(event.data) as AgentEvent;
+      if (payload.agent !== 'System') {
+        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
+      }
+    };
+
+    try {
+      const result = await runFarmerQuery({
+        district,
+        crop,
+        language: forcedLanguage,
+        farmer_query: farmerQuery,
+        run_id: runId,
+      });
+      setResponse(result);
+      setLanguage(result.language);
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'ERROR' ? 'ERROR' : 'COMPLETE',
+      })));
+      toast.success(`Advisory ready in ${result.language}`);
+    } catch {
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'COMPLETE' ? 'COMPLETE' : 'ERROR',
+        message: item.status === 'COMPLETE' ? item.message : 'Run did not complete for this agent.',
+      })));
+      toast.error('Agent run failed');
+    } finally {
+      setLoading(false);
+      source.close();
+    }
+  }
+
   async function loadBilingualDemo() {
     setDemoLoading(true);
     try {
@@ -223,45 +312,7 @@ export default function FarmerAdvisory() {
   }
 
   async function execute() {
-    const runId = crypto.randomUUID();
-    setLoading(true);
-    setResponse(null);
-    setActiveRunId(runId);
-    setAgentFlow(defaultAgentFlow);
-    const source = createEventSource(runId);
-    source.onmessage = (event) => {
-      const payload = JSON.parse(event.data) as AgentEvent;
-      if (payload.agent !== 'System') {
-        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
-      }
-    };
-
-    try {
-      const result = await runFarmerQuery({
-        district,
-        crop,
-        language,
-        farmer_query: query,
-        run_id: runId,
-      });
-      setResponse(result);
-      setLanguage(result.language);
-      setAgentFlow((current) => current.map((item) => ({
-        ...item,
-        status: item.status === 'ERROR' ? 'ERROR' : 'COMPLETE',
-      })));
-      toast.success(`Advisory ready in ${result.language}`);
-    } catch {
-      setAgentFlow((current) => current.map((item) => ({
-        ...item,
-        status: item.status === 'COMPLETE' ? 'COMPLETE' : 'ERROR',
-        message: item.status === 'COMPLETE' ? item.message : 'Run did not complete for this agent.',
-      })));
-      toast.error('Agent run failed');
-    } finally {
-      setLoading(false);
-      source.close();
-    }
+    await runPipelineWithQuery(query, language);
   }
 
   async function triggerEscalationDemo() {
@@ -412,6 +463,23 @@ export default function FarmerAdvisory() {
                 className='mt-4 w-full resize-none rounded-[24px] border border-slate-200 bg-white px-4 py-3 text-[15px] leading-7 text-text-main shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100'
                 placeholder={sampleQuery}
               />
+              <div className='mt-4 rounded-2xl border border-primary/15 bg-white p-4'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                  <div>
+                    <p className='text-sm font-semibold text-text-main'>Simulated Marathi voice note</p>
+                    <p className='mt-1 text-sm leading-6 text-text-muted'>Plays a Marathi sample in the browser, transcribes it into the query field, and runs the pipeline automatically.</p>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={playSampleVoiceDemo}
+                    disabled={loading || isPlayingSampleVoice}
+                    className='inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-emerald-50 px-4 py-2 text-sm font-semibold text-primary disabled:opacity-60'
+                  >
+                    <Mic size={15} />
+                    {isPlayingSampleVoice ? 'Playing sample...' : 'Play Marathi sample'}
+                  </button>
+                </div>
+              </div>
               <p className='mt-3 text-xs text-text-muted'>
                 {voiceSupported
                   ? `Mic language follows the selected language. Current voice locale: ${speechLanguageFor(language, currentDistrict?.state)}`
