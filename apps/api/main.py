@@ -1465,7 +1465,7 @@ async def run_pipeline(payload: AnalyzeRequest | FarmerQueryRequest) -> dict[str
         language=resolved_language,
         farmer_query=payload.farmer_query,
         phone_type=payload.phone_type,
-        data_freshness_days=12 if payload.edge_case == "data_staleness" else 5,
+        data_freshness_days=15 if payload.edge_case == "data_staleness" else 5,
         edge_case=payload.edge_case,
         input_source="farmer-query" if payload.channel == "farmer" else "dashboard",
     )
