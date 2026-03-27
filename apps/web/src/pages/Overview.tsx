@@ -124,18 +124,9 @@ export default function Overview() {
         <StatCard icon={Bot} label="Last Scan" value={stats ? new Date(stats.lastScanTimestamp).toLocaleTimeString('en-IN') : '--'} accent="text-danger" />
       </div>
 
-      <div className="overflow-hidden rounded-[30px] border border-[rgba(31,122,77,0.14)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(240,245,240,0.96))] shadow-[0_22px_56px_rgba(20,44,31,0.08)]">
-        <div className="flex flex-col gap-5 border-b border-[rgba(31,122,77,0.1)] bg-[linear-gradient(120deg,rgba(31,122,77,0.1),rgba(245,158,11,0.08))] px-6 py-5 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-text-muted">Impact Quantification</p>
-            <p className="mt-2 text-lg font-semibold text-text-main">Preventive crop intelligence at national scale</p>
-          </div>
-          <p className="max-w-xl text-sm leading-6 text-text-muted">Estimated business value if seasonal loss prevention reaches the current smallholder base across India.</p>
-        </div>
-        <div className="px-6 py-6">
-          <p className="text-2xl font-semibold leading-tight text-text-main sm:text-[2.15rem]">₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.</p>
-          <p className="mt-3 text-sm leading-6 text-text-muted">This frames the system as an early-warning layer for farmer income protection, FPO intervention planning, and insurer loss mitigation.</p>
-        </div>
+      <div className="rounded-[28px] border border-[rgba(31,122,77,0.14)] bg-[linear-gradient(135deg,rgba(31,122,77,0.1),rgba(245,158,11,0.08))] p-6 shadow-[0_18px_48px_rgba(20,44,31,0.08)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-text-muted">Impact Quantification</p>
+        <p className="mt-3 text-xl font-semibold leading-tight text-text-main sm:text-[1.7rem]">₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.</p>
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,0.9fr)]">
