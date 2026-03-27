@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CloudRain, Droplets, Leaf, Mic, Send, Square, Waves } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
 import { createEventSource, fetchDistricts, runFarmerQuery } from '../lib/api';
-import type { AgentEvent, AnalysisResponse, DistrictsResponse, ForecastDay } from '../types/farmpulse';
+import type { AgentEvent, AgentStatus, AnalysisResponse, DistrictsResponse, ForecastDay } from '../types/farmpulse';
 
 type BrowserSpeechRecognitionEvent = {
   results: ArrayLike<ArrayLike<{ transcript: string }>>;
@@ -60,6 +61,21 @@ const englishDemoQuery = sampleQueries.English;
 const hindiDemoQuery = sampleQueries.Hindi;
 const languageOptions = ['Auto', 'Marathi', 'Hindi', 'Punjabi', 'English', 'Bengali', 'Gujarati', 'Tamil', 'Telugu', 'Kannada', 'Malayalam'];
 
+type AgentFlowStep = {
+  agent: string;
+  title: string;
+  status: AgentStatus;
+  message: string;
+  step: string;
+};
+
+const defaultAgentFlow: AgentFlowStep[] = [
+  { agent: 'Satellite Stress Scout', title: '1. Satellite Stress Scout', status: 'IDLE', message: 'Waiting to ingest NDVI, data freshness, and district weather context.', step: 'ready' },
+  { agent: 'Crop Risk Analyst', title: '2. Crop Risk Analyst', status: 'IDLE', message: 'Waiting to score risk, infer root cause, and decide escalation.', step: 'ready' },
+  { agent: 'Advisory Generator', title: '3. Advisory Generator', status: 'IDLE', message: 'Waiting to generate the farmer SMS, WhatsApp answer, and model route.', step: 'ready' },
+  { agent: 'Institutional Reporter', title: '4. Institutional Reporter', status: 'IDLE', message: 'Waiting to attach the institutional report and audit-ready record.', step: 'ready' },
+];
+
 function getSampleQuery(language: string, districtLanguage?: string) {
   if (language === 'Auto') {
     return sampleQueries[districtLanguage ?? 'Marathi'] ?? sampleQueries.Auto;
@@ -84,7 +100,8 @@ export default function FarmerAdvisory() {
   const [query, setQuery] = useState(defaultQuery);
   const [response, setResponse] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [recentEvents, setRecentEvents] = useState<AgentEvent[]>([]);
+  const [agentFlow, setAgentFlow] = useState<AgentFlowStep[]>(defaultAgentFlow);
+  const [activeRunId, setActiveRunId] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoResponses, setDemoResponses] = useState<{ English: AnalysisResponse | null; Hindi: AnalysisResponse | null }>({ English: null, Hindi: null });
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -125,6 +142,11 @@ export default function FarmerAdvisory() {
 
   useEffect(() => {
     setDemoResponses({ English: null, Hindi: null });
+  }, [district, crop]);
+
+  useEffect(() => {
+    setAgentFlow(defaultAgentFlow);
+    setActiveRunId('');
   }, [district, crop]);
 
   useEffect(() => () => recognitionRef.current?.stop(), []);
@@ -203,12 +225,14 @@ export default function FarmerAdvisory() {
   async function execute() {
     const runId = crypto.randomUUID();
     setLoading(true);
-    setRecentEvents([]);
+    setResponse(null);
+    setActiveRunId(runId);
+    setAgentFlow(defaultAgentFlow);
     const source = createEventSource(runId);
     source.onmessage = (event) => {
       const payload = JSON.parse(event.data) as AgentEvent;
       if (payload.agent !== 'System') {
-        setRecentEvents((current) => [payload, ...current].slice(0, 4));
+        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
       }
     };
 
@@ -222,8 +246,17 @@ export default function FarmerAdvisory() {
       });
       setResponse(result);
       setLanguage(result.language);
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'ERROR' ? 'ERROR' : 'COMPLETE',
+      })));
       toast.success(`Advisory ready in ${result.language}`);
     } catch {
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'COMPLETE' ? 'COMPLETE' : 'ERROR',
+        message: item.status === 'COMPLETE' ? item.message : 'Run did not complete for this agent.',
+      })));
       toast.error('Agent run failed');
     } finally {
       setLoading(false);
@@ -237,7 +270,6 @@ export default function FarmerAdvisory() {
     setLanguage('Auto');
     setQuery(getSampleQuery('Auto', 'Marathi'));
     setResponse(null);
-    setRecentEvents([]);
     toast.success('Sample scenario loaded');
   }
 
@@ -357,14 +389,16 @@ export default function FarmerAdvisory() {
           </div>
 
           <div className='flex min-h-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
-            <p className='text-sm font-semibold text-text-main'>What the agent is checking</p>
-            <div className='mt-4 max-h-[16rem] space-y-3 overflow-auto pr-1'>
-              {(recentEvents.length ? recentEvents : defaultStatus).map((event, index) => (
-                <div key={`${event.agent}-${index}`} className='rounded-2xl border border-border bg-surface-2 p-4'>
-                  <p className='text-sm font-semibold text-text-main'>{event.agent}</p>
-                  <p className='mt-1 text-sm leading-6 text-text-muted'>{event.message}</p>
-                </div>
+            <p className='text-sm font-semibold text-text-main'>Live end-to-end agent run</p>
+            <p className='mt-1 text-sm leading-6 text-text-muted'>A single `/api/farmer-query` call streams all four agent stages and returns the farmer answer, risk score, audit entry, and institutional report together.</p>
+            <div className='mt-4 max-h-[23rem] space-y-3 overflow-auto pr-1'>
+              {agentFlow.map((item) => (
+                <AgentFlowCard key={item.agent} item={item} />
               ))}
+            </div>
+            <div className='mt-4 rounded-2xl border border-border bg-surface-2 p-4'>
+              <p className='text-xs font-semibold uppercase tracking-[0.2em] text-text-muted'>Run ID</p>
+              <p className='mt-2 break-all text-sm leading-6 text-text-main'>{activeRunId || 'A run ID appears here after submission.'}</p>
             </div>
           </div>
         </section>
@@ -443,14 +477,17 @@ export default function FarmerAdvisory() {
               </div>
 
               <div className='flex min-h-[34rem] min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
-                <p className='text-sm font-semibold text-text-main'>Quick summary</p>
+                <p className='text-sm font-semibold text-text-main'>Returned in one API call</p>
                 <div className='mt-4 flex-1 space-y-3 overflow-auto pr-1'>
-                  <SummaryRow label='Language' value={response.language} />
+                  <SummaryRow label='SMS advisory' value={response.advisorySms} />
+                  <SummaryRow label='Risk score' value={`${response.riskReport.riskScore}/100 • ${response.riskReport.riskCategory}`} />
                   <SummaryRow label='Confidence' value={`${response.confidence.toFixed(0)}%`} />
-                  <SummaryRow label='Root cause' value={response.riskReport.rootCause} />
+                  <SummaryRow label='Model route' value={`${displayModelName(response.modelUsed)} for farmer advisory • Sonnet for institutional report`} />
+                  <SummaryRow label='Institutional report' value={response.advisoryInstitutional} />
                   <SummaryRow label='Recommended action' value={response.riskReport.recommendedAction} />
                   <SummaryRow label='Data sources' value={response.dataSources.join(' • ')} />
                   <SummaryRow label='Warnings' value={response.warnings.join(' | ') || 'None'} />
+                  <AuditLinkCard runId={response.runId} />
                 </div>
               </div>
             </div>
@@ -461,11 +498,11 @@ export default function FarmerAdvisory() {
   );
 }
 
-const defaultStatus: AgentEvent[] = [
-  { agent: 'Voice or Text Input', step: 'ready', status: 'IDLE', message: 'Waiting for the farmer query.', timestamp: '', run_id: '' },
-  { agent: 'Soil + Weather Check', step: 'ready', status: 'IDLE', message: 'Will compare soil conditions with the next 5 days of weather.', timestamp: '', run_id: '' },
-  { agent: 'Advisory Generator', step: 'ready', status: 'IDLE', message: 'Will return the answer in the same language as the farmer.', timestamp: '', run_id: '' },
-];
+function displayModelName(model: string) {
+  if (model === 'farmer-advisory-engine') return 'Haiku';
+  if (model === 'institutional-analysis-engine') return 'Sonnet';
+  return model;
+}
 
 function selectBestDay(days: ForecastDay[]) {
   if (!days.length) {
@@ -558,6 +595,39 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
     <div className='min-w-0 rounded-2xl border border-border bg-surface-2 p-4'>
       <p className='text-xs font-semibold uppercase tracking-[0.2em] text-text-muted'>{label}</p>
       <p className='mt-2 break-words text-sm leading-7 text-text-main'>{value}</p>
+    </div>
+  );
+}
+
+function AgentFlowCard({ item }: { item: AgentFlowStep }) {
+  const tone = item.status === 'COMPLETE' ? 'border-emerald-200 bg-emerald-50' : item.status === 'RUNNING' ? 'border-amber-200 bg-amber-50' : item.status === 'ERROR' ? 'border-red-200 bg-red-50' : 'border-border bg-surface-2';
+  const badge = item.status === 'COMPLETE' ? 'text-emerald-700' : item.status === 'RUNNING' ? 'text-amber-700' : item.status === 'ERROR' ? 'text-red-700' : 'text-text-muted';
+
+  return (
+    <div className={`rounded-2xl border p-4 ${tone}`}>
+      <div className='flex items-start justify-between gap-3'>
+        <div>
+          <p className='text-sm font-semibold text-text-main'>{item.title}</p>
+          <p className='mt-1 text-xs uppercase tracking-[0.18em] text-text-muted'>{item.agent}</p>
+        </div>
+        <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${badge}`}>{item.status}</span>
+      </div>
+      <p className='mt-2 text-sm leading-6 text-text-muted'>{item.message}</p>
+    </div>
+  );
+}
+
+function AuditLinkCard({ runId }: { runId: string }) {
+  return (
+    <div className='rounded-2xl border border-primary/20 bg-emerald-50/70 p-4'>
+      <p className='text-xs font-semibold uppercase tracking-[0.2em] text-text-muted'>Audit entry</p>
+      <p className='mt-2 break-all text-sm leading-6 text-text-main'>{runId}</p>
+      <Link
+        to={`/audit?runId=${runId}`}
+        className='mt-3 inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white'
+      >
+        Open audit trace
+      </Link>
     </div>
   );
 }

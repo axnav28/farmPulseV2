@@ -58,7 +58,7 @@ function persistAuditEntries(entries: AuditEntry[]) {
   writeCachedAuditEntries(mergeAuditEntries(entries, cached));
 }
 
-function filterAuditEntries(entries: AuditEntry[], filters?: { agent?: string; district?: string; riskLevel?: string }) {
+function filterAuditEntries(entries: AuditEntry[], filters?: { agent?: string; district?: string; riskLevel?: string; runId?: string }) {
   return entries.filter((entry) => {
     if (filters?.agent && !entry.agent.toLowerCase().includes(filters.agent.toLowerCase())) {
       return false;
@@ -67,6 +67,9 @@ function filterAuditEntries(entries: AuditEntry[], filters?: { agent?: string; d
       return false;
     }
     if (filters?.riskLevel && entry.riskLevel.toLowerCase() !== filters.riskLevel.toLowerCase()) {
+      return false;
+    }
+    if (filters?.runId && entry.runId !== filters.runId) {
       return false;
     }
     return true;
@@ -169,11 +172,12 @@ export async function simulateEdgeCase(payload: {
   return result;
 }
 
-export async function fetchAuditLog(filters?: { agent?: string; district?: string; riskLevel?: string }): Promise<{ entries: AuditEntry[] }> {
+export async function fetchAuditLog(filters?: { agent?: string; district?: string; riskLevel?: string; runId?: string }): Promise<{ entries: AuditEntry[] }> {
   const search = new URLSearchParams();
   if (filters?.agent) search.set('agent', filters.agent);
   if (filters?.district) search.set('district', filters.district);
   if (filters?.riskLevel) search.set('riskLevel', filters.riskLevel);
+  if (filters?.runId) search.set('runId', filters.runId);
   const suffix = search.toString() ? '?' + search.toString() : '';
   const response = await fetch(url('/api/audit-log' + suffix));
   if (!response.ok) {
