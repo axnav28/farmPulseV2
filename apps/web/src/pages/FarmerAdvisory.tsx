@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CloudRain, Droplets, Leaf, Mic, Send, Square, Waves } from 'lucide-react';
+import { AlertTriangle, CloudRain, Droplets, Leaf, Mic, Send, Square, Waves } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
-import { createEventSource, fetchDistricts, runFarmerQuery } from '../lib/api';
+import { createEventSource, fetchDistricts, runFarmerQuery, simulateEdgeCase } from '../lib/api';
 import type { AgentEvent, AgentStatus, AnalysisResponse, DistrictsResponse, ForecastDay } from '../types/farmpulse';
 
 type BrowserSpeechRecognitionEvent = {
@@ -264,6 +264,48 @@ export default function FarmerAdvisory() {
     }
   }
 
+  async function triggerEscalationDemo() {
+    const runId = crypto.randomUUID();
+    setLoading(true);
+    setResponse(null);
+    setActiveRunId(runId);
+    setAgentFlow(defaultAgentFlow);
+    const source = createEventSource(runId);
+    source.onmessage = (event) => {
+      const payload = JSON.parse(event.data) as AgentEvent;
+      if (payload.agent !== 'System') {
+        setAgentFlow((current) => current.map((item) => (item.agent === payload.agent ? { ...item, status: payload.status, message: payload.message, step: payload.step } : item)));
+      }
+    };
+
+    try {
+      const result = await simulateEdgeCase({
+        scenario: 'data_staleness',
+        district,
+        crop,
+        language,
+        run_id: runId,
+      });
+      setResponse(result);
+      setLanguage(result.language);
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'ERROR' ? 'ERROR' : 'COMPLETE',
+      })));
+      toast.success('Escalation demo ready');
+    } catch {
+      setAgentFlow((current) => current.map((item) => ({
+        ...item,
+        status: item.status === 'COMPLETE' ? 'COMPLETE' : 'ERROR',
+        message: item.status === 'COMPLETE' ? item.message : 'Run did not complete for this agent.',
+      })));
+      toast.error('Escalation demo failed');
+    } finally {
+      setLoading(false);
+      source.close();
+    }
+  }
+
   function loadSampleScenario() {
     setDistrict('Yavatmal');
     setCrop('Cotton');
@@ -377,15 +419,31 @@ export default function FarmerAdvisory() {
               </p>
             </div>
 
-            <button
-              type='button'
-              disabled={loading || !query.trim()}
-              onClick={execute}
-              className='mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-4 text-base font-semibold text-white disabled:opacity-60'
-            >
-              <Send size={16} />
-              {loading ? 'Checking soil and weather...' : 'Get farmer advice'}
-            </button>
+            <div className='mt-5 grid gap-3 sm:grid-cols-2'>
+              <button
+                type='button'
+                disabled={loading || !query.trim()}
+                onClick={execute}
+                className='inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-4 text-base font-semibold text-white disabled:opacity-60'
+              >
+                <Send size={16} />
+                {loading ? 'Checking soil and weather...' : 'Get farmer advice'}
+              </button>
+              <button
+                type='button'
+                disabled={loading}
+                onClick={triggerEscalationDemo}
+                className='inline-flex w-full items-center justify-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-5 py-4 text-base font-semibold text-amber-800 disabled:opacity-60'
+              >
+                <AlertTriangle size={16} />
+                Trigger escalation demo
+              </button>
+            </div>
+
+            <div className='mt-4 rounded-3xl border border-amber-200 bg-amber-50/80 p-4'>
+              <p className='text-sm font-semibold text-amber-900'>Judge demo trigger</p>
+              <p className='mt-1 text-sm leading-6 text-amber-800'>One click runs the real edge-case path and forces a visible refusal state through `/api/simulate-edge-case` so judges can see the escalation behavior, not just hear about it.</p>
+            </div>
           </div>
 
           <div className='flex min-h-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
@@ -423,17 +481,29 @@ export default function FarmerAdvisory() {
 
               {response && (
                 <div className='mt-5 flex-1 space-y-4 overflow-auto pr-1 min-w-0'>
-                  <div className={`min-w-0 rounded-3xl p-5 ${response.escalate ? 'bg-amber-50' : 'bg-emerald-50'}`}>
-                    <div className='flex min-w-0 flex-col gap-3'>
-                      <div className='min-w-0'>
-                        <p className='text-xs font-semibold uppercase tracking-[0.24em] text-text-muted'>Best farmer-facing answer</p>
-                        <p className='mt-2 break-words text-lg font-semibold leading-8 text-text-main sm:text-xl'>{response.escalate ? 'Ground verification needed' : response.advisorySms}</p>
+                  {response.escalate ? (
+                    <div className='min-w-0 rounded-3xl border border-amber-300 bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-[0_10px_30px_rgba(245,158,11,0.14)]'>
+                      <div className='flex items-start gap-3'>
+                        <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700'>
+                          <AlertTriangle size={20} />
+                        </div>
+                        <div className='min-w-0'>
+                          <p className='text-xs font-semibold uppercase tracking-[0.24em] text-amber-700'>Escalated to KVK agronomist</p>
+                          <p className='mt-2 break-words text-lg font-semibold leading-8 text-amber-950 sm:text-xl'>Confidence below threshold ({response.confidence.toFixed(0)}%). No recommendation fabricated.</p>
+                          <p className='mt-3 break-words text-sm leading-7 text-amber-900'>{response.escalationReason || response.advisoryWhatsapp}</p>
+                          <p className='mt-3 text-sm font-medium text-amber-900'>KVK contact: {response.districtRecord.kvk_contact}</p>
+                        </div>
                       </div>
                     </div>
-                    <p className='mt-4 whitespace-pre-line break-words text-sm leading-7 text-text-muted'>
-                      {response.escalate ? response.escalationReason || response.advisoryWhatsapp : response.advisoryWhatsapp}
-                    </p>
-                  </div>
+                  ) : (
+                    <div className='min-w-0 rounded-3xl border border-emerald-200 bg-[linear-gradient(135deg,#ecfdf5,#d1fae5)] p-5 shadow-[0_10px_30px_rgba(16,185,129,0.12)]'>
+                      <div className='min-w-0'>
+                        <p className='text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700'>Advisory delivered</p>
+                        <p className='mt-2 break-words text-lg font-semibold leading-8 text-text-main sm:text-xl'>{response.advisorySms}</p>
+                      </div>
+                      <p className='mt-4 whitespace-pre-line break-words text-sm leading-7 text-text-muted'>{response.advisoryWhatsapp}</p>
+                    </div>
+                  )}
 
                   <div className='grid gap-4 md:grid-cols-2 2xl:grid-cols-4'>
                     <InfoCard icon={Droplets} label='Soil moisture' value={`${response.soilSnapshot.moisturePct}%`} helper={response.soilSnapshot.moistureBand} />
