@@ -43,7 +43,7 @@ export default function DistrictExplorer() {
       <PageHeader
         eyebrow="District Explorer"
         title="District Risk Explorer"
-        description="Search every monitored district, inspect full agent reasoning, and see NDVI stress rendered directly on the map with transparent source labeling."
+        description="Search every monitored district, inspect full agent reasoning, and see vegetation stress rendered directly on the map with transparent NASA POWER and MODIS provenance."
       />
 
       <RiskMap districts={filtered} metric="ndvi" height={360} title="NDVI Stress Heat Map" />

@@ -70,6 +70,9 @@ export default function RiskMap({
 }) {
   const mapTitle = title ?? (metric === 'ndvi' ? 'NDVI Heat Map' : 'Risk Heat Map');
   const ndviMeta = districts[0]?.ndviMeta;
+  const ndviDescription = ndviMeta?.mode === 'reference_snapshot'
+    ? 'District vegetation signal is rendered as a green-to-red stress layer using live NASA POWER observations anchored to MODIS reference ranges.'
+    : 'District vegetation signal is rendered as a green-to-red stress layer. When live NASA POWER access is unavailable, FarmPulse falls back to clearly labeled reference-aligned estimates.';
 
   return (
     <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
@@ -77,9 +80,7 @@ export default function RiskMap({
         <div className="max-w-5xl">
           <h3 className="text-base font-semibold text-text-main">{mapTitle}</h3>
           <p className="mt-1 text-sm text-text-muted">
-            {metric === 'ndvi'
-              ? 'District NDVI is rendered as a green-to-red stress layer. Values are demo-estimated and anchored to official NASA MODIS reference ranges.'
-              : 'District risk is rendered from low to critical to show where attention is needed fastest.'}
+            {metric === 'ndvi' ? ndviDescription : 'District risk is rendered from low to critical to show where attention is needed fastest.'}
           </p>
           {metric === 'ndvi' && ndviMeta ? (
             <div className="mt-4 w-full max-w-4xl rounded-2xl border border-border bg-surface-2 px-4 py-3 text-xs leading-5 text-text-muted">

@@ -20,23 +20,30 @@ apps/
 - `/institutional`: FPO, insurer, and government reporting views
 - `/audit`: full agent audit trail with export support
 
-## NDVI Data Transparency
+## NDVI Data Pipeline
 
-The current demo does not claim live per-district satellite extraction.
+FarmPulse now uses a practical live-data vegetation signal instead of blocked Earth Engine extraction.
 
-- District NDVI values shown in the UI are demo estimates generated from crop-season baselines, district stress profiles, and freshness rules.
-- Those values are intentionally labeled against official NASA MODIS vegetation-index reference ranges so the UI is transparent about the source basis.
-- In the district explorer, every NDVI map value and district detail panel is marked as `demo-estimated` rather than `live satellite`.
+- Backend vegetation scoring combines live NASA POWER agroclimate observations with Open-Meteo forecast context already used elsewhere in the advisory stack.
+- The displayed vegetation score is anchored to NASA MODIS vegetation-index reference ranges, so the app is transparent that this is a district-level reference snapshot rather than a pixel-level satellite clip.
+- If NASA POWER is temporarily unavailable, the API falls back to a clearly labeled estimate instead of pretending the value is live.
 
-Official reference used for NDVI range alignment:
+Official sources:
 
-- NASA Earthdata MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061 (MOD13Q1): https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061
-
-Weather source:
-
+- NASA POWER Daily Agroclimatology API: https://power.larc.nasa.gov/
+- NASA Earthdata MODIS MOD13Q1 reference dataset: https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061
 - Open-Meteo forecast API: https://open-meteo.com/
 
-If you later want true observed district NDVI instead of demo-estimated values, the next step is to ingest actual MODIS or other satellite rasters and aggregate them to district geometry boundaries before serving them from the API.
+### Local Setup
+
+Set these environment variables on the API host or in `apps/api/.env`:
+
+```env
+POWER_LOOKBACK_DAYS=30
+NDVI_CACHE_TTL_SECONDS=43200
+```
+
+No Earth Engine project or service-account registration is required for this path.
 
 ## Mandi Price Notes
 
@@ -111,6 +118,6 @@ The frontend expects the API on `http://127.0.0.1:8000` during local development
 ## Notes
 
 - The backend uses Open-Meteo weather with retry and fallback behavior.
-- NDVI values are clearly labeled as demo-estimated until a real satellite ingest pipeline is added.
+- NDVI values now use a NASA POWER and MODIS-referenced vegetation signal, with clear fallback labeling if the live climate feed is unavailable.
 - Auditability, multilingual advisory generation, and edge-case escalation are first-class demo features.
 - The repository is intentionally structured for public GitHub sharing and straightforward deployment.
