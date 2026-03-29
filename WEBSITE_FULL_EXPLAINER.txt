@@ -1,0 +1,1300 @@
+FarmPulse AI Website: Complete Feature and Flow Explainer
+
+This file is a plain-text explanation of the full FarmPulse AI website so that a human reviewer, judge, crawler, or non-JavaScript fetcher can understand exactly what exists in the product, how many pages there are, what every page does, and how the system works underneath.
+
+==================================================
+1. WEBSITE OVERVIEW
+==================================================
+
+FarmPulse AI is a multi-page React single-page application backed by a FastAPI API. It is built as a hackathon-ready crop-risk intelligence platform for Indian agriculture.
+
+The website currently has 7 main user-facing pages:
+
+1. /overview
+2. /farmer-advisory
+3. /channel-fallback
+4. /districts
+5. /mandi-prices
+6. /institutional
+7. /audit
+
+There is also a root route / which automatically redirects to /overview.
+
+The website is designed around one central product promise:
+- a farmer or institutional user can get district-aware crop-risk intelligence, multilingual advisory, visible agent reasoning, and auditable outputs in one connected flow.
+
+==================================================
+2. GLOBAL APP STRUCTURE
+==================================================
+
+The app uses a shared shell and navigation system.
+
+2.1 Shared layout
+- The app uses a full-height layout with a sidebar on large screens.
+- On smaller screens, the sidebar is replaced with a sticky horizontal mobile navigation row.
+- The main content area scrolls internally, not the full page shell.
+- Each page is wrapped inside a max-width content container.
+
+2.2 Sidebar navigation items
+The left sidebar contains these entries:
+- Dashboard -> /overview
+- Farmer Help -> /farmer-advisory
+- Channels -> /channel-fallback
+- District Data -> /districts
+- Mandi Prices -> /mandi-prices
+- Institutional Reports -> /institutional
+- Audit Logs -> /audit
+
+2.3 Sidebar utility content
+The sidebar also contains:
+- a FarmPulse AI identity block with ET GenAI 2026 branding
+- a small “Simple use” helper card telling users to start with Farmer Help and then explore Channels and Mandi Prices
+- a theme toggle button for dark/light mode
+- an “Audit On” badge indicating auditability is active
+
+2.4 Shared page header pattern
+Every page uses a common header component with:
+- eyebrow label
+- page title
+- descriptive summary text
+- optional page-level action button
+
+==================================================
+3. SHARED DATA MODEL USED THROUGHOUT THE WEBSITE
+==================================================
+
+The frontend expects structured data from the backend. Important objects include:
+
+3.1 District summary
+Each district card/row can include:
+- id
+- district name
+- state
+- crop
+- NDVI score
+- baseline NDVI
+- risk score
+- risk level
+- acreage in lakh acres
+- latitude and longitude
+- update timestamp
+- NDVI metadata
+
+3.2 NDVI metadata
+The NDVI or vegetation metadata can include:
+- mode
+- observedAt
+- freshnessDays
+- sourceName
+- sourceUrl
+- resolution
+- citation
+- note
+- displayLabel
+- scoreRange
+
+3.3 Full analysis response
+A full pipeline run can return:
+- runId
+- district
+- state
+- crop
+- language
+- NDVI score and baseline
+- NDVI anomaly percent
+- NDVI metadata
+- weather data
+- crop stage
+- days to harvest
+- pest risk and pest probability
+- structured risk report
+- SMS advisory
+- WhatsApp advisory
+- institutional advisory
+- reasoning chain
+- audit log entries
+- confidence
+- warnings
+- escalation flag
+- escalation reason
+- data freshness days
+- model route identifier
+- soil snapshot
+- 5-day forecast
+- data sources list
+- input source
+- farmer query
+- institutional output objects
+- district record including KVK contact
+
+3.4 Audit entry
+Each audit row can contain:
+- timestamp
+- runId
+- district
+- state
+- crop
+- agent
+- action
+- inputSummary
+- outputSummary
+- modelUsed
+- tokensConsumed
+- confidence
+- escalation
+- riskLevel
+
+==================================================
+4. FRONTEND API COMMUNICATION
+==================================================
+
+The frontend calls the backend through a shared API client layer.
+
+Important frontend API functions:
+- fetchDistricts() -> GET /api/districts
+- fetchDistrictDetail(districtId) -> GET /api/district/{districtId}
+- fetchMandiPrice({ district, crop }) -> GET /api/mandi-price
+- runAnalysis(payload) -> POST /api/analyze
+- runFarmerQuery(payload) -> POST /api/farmer-query
+- simulateEdgeCase(payload) -> POST /api/simulate-edge-case
+- fetchAuditLog(filters) -> GET /api/audit-log
+- createEventSource(runId) -> GET /api/stream/{runId} via EventSource
+- exportAuditLogUrl() -> GET /api/audit-log/export
+
+4.1 Audit cache behavior
+The frontend also stores audit entries in browser localStorage.
+This is important because:
+- the backend uses SQLite
+- serverless environments can be ephemeral
+- the app merges backend audit entries with locally cached entries
+- this keeps the audit page useful during demos even when persistence is imperfect
+
+4.2 API base URL
+The frontend expects a Vercel build variable:
+- VITE_API_BASE=https://api-orcin-alpha.vercel.app
+
+==================================================
+5. PAGE-BY-PAGE EXPLANATION
+==================================================
+
+--------------------------------------------------
+5.1 /overview
+--------------------------------------------------
+
+Purpose:
+- This is the command center dashboard.
+- It gives the first high-level view of the platform.
+- It is meant to be the demo-opening page.
+
+Main features:
+
+A. Page header
+- Eyebrow: Command Center
+- Title: FarmPulse Agentic Dashboard
+- Description explains that the page is for institutional crop-risk intelligence with visible agent coordination, multilingual advisory output, and auditability.
+- Action button: Run Full Analysis
+
+B. Run Full Analysis button
+- Creates a new run ID
+- Opens an SSE connection to /api/stream/{runId}
+- Calls /api/analyze for a default scenario:
+  - district: Yavatmal
+  - crop: Cotton
+  - language: Marathi
+  - query: Marathi cotton fertilizer timing query
+- Updates agent status cards live as SSE events arrive
+- Populates the activity feed with the most recent events
+- Stores the latest response for the Demo Scenario Pulse card
+
+C. Agent Status Panel
+Shows 4 top-level agent cards:
+1. Satellite Stress Scout
+2. Crop Risk Analyst
+3. Advisory Generator
+4. Institutional Reporter
+
+Each card shows:
+- agent name
+- short description
+- colored status indicator
+- state label: IDLE, RUNNING, COMPLETE, or ERROR
+
+D. Summary stat cards
+The page shows 4 numeric summary cards:
+- Districts Monitored
+- Active Alerts
+- Farmers Covered
+- Last Scan
+
+These values come from /api/districts summary.
+
+E. Impact card
+The dashboard includes a dedicated impact panel showing:
+- “₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.”
+
+F. Risk map and activity feed row
+The page shows:
+- a shared RiskMap component, usually in risk mode on this page
+- an ActivityFeed showing the latest 20 SSE events
+
+The activity feed displays:
+- agent name
+- relative timestamp
+- event message
+- event status
+- agent-specific colored border accent
+
+G. NDVI Trend Snapshot
+This section renders a Recharts area chart.
+It shows:
+- week labels Week 1 to Week 5
+- a synthetic trend line derived from district risk values
+- title: NDVI Trend Snapshot
+- a small note saying “Synthetic + seeded”
+
+Important note:
+- this chart is a UI trend widget, not the same as the district vegetation source provenance layer used elsewhere.
+
+H. Demo Scenario Pulse card
+This card summarizes the flagship farmer scenario.
+It shows:
+- fixed explanatory text about the Marathi Yavatmal cotton flow
+- latest NDVI
+- confidence
+- root cause
+- best weather window
+
+If a run has already completed, these values come from the latest run.
+Otherwise it shows default demo-friendly placeholders.
+
+--------------------------------------------------
+5.2 /farmer-advisory
+--------------------------------------------------
+
+Purpose:
+- This is the centerpiece demo page.
+- It is the most feature-rich page in the whole app.
+- It demonstrates multilingual farmer interaction, visible agent execution, escalation behavior, soil and weather context, reasoning, and audit linkage.
+
+Main features:
+
+A. Page header
+- Eyebrow: Farmer Help
+- Title: Multilingual Farmer Advisory
+- Description says farmers can type or speak a question and receive same-language advice using local soil, NDVI, pest, and forecast context.
+
+B. 3-step intro cards
+The top of the page shows three explainer cards:
+1. Choose location
+2. Type or speak the query
+3. Get advisory
+
+These cards orient the user before they interact.
+
+C. Smartphone multilingual demo section
+This section shows two phone-style preview cards side by side.
+Its purpose is to demonstrate the same farmer problem in two languages.
+
+It includes:
+- button: Generate English + Hindi demo
+- English phone preview
+- Hindi phone preview
+
+Each phone preview card shows:
+- phone frame UI
+- a query bubble
+- a response bubble
+- a confidence and root-cause footer when a live response exists
+
+The bilingual demo runs two real backend calls in parallel:
+- English query
+- Hindi query
+
+D. Farmer question composer
+This section is the main input panel.
+
+It contains:
+- District dropdown
+- Crop dropdown
+- Language dropdown
+- State read-only field
+
+Crop options include:
+- Cotton
+- Wheat
+- Rice
+- Soybean
+- Sugarcane
+- Moringa
+
+Language options include:
+- Auto
+- Marathi
+- Hindi
+- Punjabi
+- English
+- Bengali
+- Gujarati
+- Tamil
+- Telugu
+- Kannada
+- Malayalam
+
+The query textarea:
+- shows a language-aware sample query
+- updates automatically when the language changes if the current query is still one of the sample placeholders
+- is intended to support both typed and voice-assisted input
+
+E. Browser voice input
+The page supports browser speech recognition if available.
+
+Voice input behavior:
+- uses window.SpeechRecognition or window.webkitSpeechRecognition
+- sets the recognition language from the selected language or state default
+- inserts the transcript into the query box
+- displays toast messages for success/failure
+- has Start/Stop behavior through a single mic button
+
+Voice locale logic:
+- Auto + Maharashtra -> mr-IN
+- Auto + Punjab -> pa-IN
+- otherwise -> hi-IN
+- manual language selection maps to corresponding locale codes
+
+F. Simulated Marathi voice note demo
+Separate from live browser mic input, there is also a demo-safe voice feature.
+
+What it does:
+- button: Play Marathi sample
+- sets district to Yavatmal
+- sets crop to Cotton
+- sets language to Marathi
+- loads the Marathi sample query
+- optionally speaks the sample with speechSynthesis if available
+- after playback or fallback timer, auto-runs the real advisory pipeline
+
+This is important for demo reliability.
+
+G. Main action buttons
+The page has two primary action buttons:
+- Get farmer advice
+- Trigger escalation demo
+
+Get farmer advice:
+- starts a real /api/farmer-query run
+- opens SSE streaming via /api/stream/{runId}
+- resets the response panel and agent flow
+- updates the UI as events arrive
+
+Trigger escalation demo:
+- runs /api/simulate-edge-case with scenario=data_staleness
+- forces a visible escalation state
+- exists specifically so judges can see refusal/escalation behavior on screen
+
+H. Judge demo trigger card
+There is a visible explanatory banner below the buttons that explicitly says:
+- the escalation button runs the real edge-case path
+- it forces a visible refusal state through /api/simulate-edge-case
+
+I. Live end-to-end agent run section
+This is one of the most important parts of the whole site.
+
+It shows a live 4-step agent flow card list:
+1. Satellite Stress Scout
+2. Crop Risk Analyst
+3. Advisory Generator
+4. Institutional Reporter
+
+Each card shows:
+- title and agent name
+- status badge
+- confidence badge
+- current status message
+
+These update from SSE events in real time.
+
+Below that, the page also shows the active run ID.
+
+J. Farmer answer panel
+This is the main result surface.
+
+If there is no response yet:
+- it shows an empty-state card explaining that the answer will appear here
+- it highlights the three context dimensions:
+  - language
+  - soil
+  - weather
+
+If a response exists and escalate=false:
+- it shows a green “Advisory delivered” card
+- displays advisorySms prominently
+- displays advisoryWhatsapp below it
+
+If a response exists and escalate=true:
+- it shows a large amber escalation banner
+- title: Escalated to KVK agronomist
+- explicitly says confidence is below threshold and no recommendation was fabricated
+- shows escalationReason or advisoryWhatsapp explanation text
+- shows the district KVK contact
+
+K. Soil and weather summary cards
+When a response exists, a row of InfoCards appears showing:
+- Soil moisture
+- Nitrogen
+- Soil pH
+- Best weather window
+
+Each card uses the soil snapshot or selected best forecast day.
+
+L. Query used card
+The page repeats the exact farmer query that was used for the run.
+This is useful for proving to judges that the answer actually responds to the prompt and is not a fixed canned output.
+
+M. 5-day weather panel
+A dedicated right-side panel lists forecast days returned by the backend.
+Each row shows:
+- day label
+- date
+- rainfall in mm
+- min/max temperature
+- outlook
+
+The best forecast day is visually highlighted.
+The page message says drier days are usually safer for fertilizer application.
+
+N. Why the agent suggested this
+This section renders the reasoning chain from the backend.
+Each step is shown in a card-like sequence.
+Typical reasoning covers:
+- query intent interpretation
+- weather and best window check
+- soil condition check
+- crop stage and pest calendar check
+- multilingual advisory generation
+- escalation handoff when required
+
+O. Returned in one API call
+This section proves end-to-end completion.
+It shows that one farmer-query call returns:
+- SMS advisory
+- risk score and category
+- confidence
+- model route label
+- institutional report
+- recommended action
+- data sources
+- warnings
+- audit link
+
+Model route display behavior:
+- if modelUsed is farmer-advisory-engine, UI labels it as Haiku
+- institutional report is described as Sonnet
+
+P. Audit link card
+The run ID is shown again with a direct link to:
+- /audit?runId={runId}
+
+This ties the farmer flow directly to the audit page.
+
+--------------------------------------------------
+5.3 /channel-fallback
+--------------------------------------------------
+
+Purpose:
+- Shows what the same advisory looks like in real delivery channels.
+- Makes the product feel more realistic for field deployment.
+
+Main features:
+
+A. Page header
+- Eyebrow: Delivery Channels
+- Title: WhatsApp and SMS Fallback
+- Description emphasizes that real farmers may receive messaging output rather than open a dashboard.
+
+B. Advisory composer panel
+This panel lets the user create a channel-ready advisory.
+It contains:
+- District dropdown
+- Crop dropdown
+- Language dropdown
+- KVK info card for the selected district
+- Farmer query textarea
+- Generate channel preview button
+
+Language options:
+- Marathi
+- Hindi
+- Punjabi
+- English
+
+Changing language auto-loads a sample query in that language.
+
+C. Generate channel preview
+- Calls /api/farmer-query with the selected district, crop, language, and query
+- stores the analysis response
+- then renders the advisory into WhatsApp and SMS visual mockups
+
+D. WhatsApp phone mockup
+Shows:
+- user query bubble
+- outgoing advisoryWhatsApp bubble
+- delivery path: smartphone app
+- language used
+- rich message support note
+
+E. SMS phone mockup
+Shows:
+- FarmPulse Alert heading
+- advisorySms content
+- SMS gateway note
+- character-safe format note
+- feature-phone fallback message
+
+F. Three supporting info cards
+At the bottom, the page explains:
+- Deployment realism
+- Fallback logic
+- Operator view
+
+These cards are there to make the product story easier to present to judges and deployment stakeholders.
+
+--------------------------------------------------
+5.4 /districts
+--------------------------------------------------
+
+Purpose:
+- Lets the user explore monitored districts directly.
+- Connects the district table, the NDVI map, and district-level reasoning.
+
+Main features:
+
+A. Page header
+- Eyebrow: District Explorer
+- Title: District Risk Explorer
+- Description highlights search, reasoning visibility, and NASA POWER / MODIS provenance.
+
+B. NDVI Stress Heat Map
+This page uses the shared RiskMap in NDVI mode.
+
+Important implementation detail:
+- it is not a polygon choropleth
+- it renders district-centered circular stress zones on Leaflet
+- color is based on NDVI value
+- circle radius grows as NDVI worsens
+
+NDVI legend bands are:
+- 0.76+
+- 0.68-0.75
+- 0.60-0.67
+- 0.52-0.59
+- <0.52
+
+Map behavior:
+- uses OpenStreetMap tiles
+- each district has a popup showing district, state, crop, NDVI, baseline, risk, and NDVI label
+
+C. NDVI provenance section
+Below the map is a provenance card showing:
+- sourceName from districtsData.ndviSource
+- note about how the vegetation signal is built
+- resolution
+- official source link
+
+D. Monitored Districts table
+The left main panel shows a searchable table with:
+- District
+- State
+- Crop
+- NDVI
+- Risk
+- Updated
+- Actions
+
+The search box filters by district, state, or crop.
+The table and the NDVI map stay in sync with the same filter.
+
+E. Open Report action
+Each row has an Open Report button.
+Clicking it:
+- calls /api/district/{districtId}
+- loads a full analysis response for that district
+- populates the right-side detail panel
+
+F. Selected District detail panel
+When a district is selected, the right panel shows:
+- risk report card
+- district name and state
+- root cause summary
+- summary metrics:
+  - risk score
+  - confidence
+  - crop stage
+  - pest signal
+- NDVI provenance card
+- output card with SMS and institutional advisory text
+
+G. Reasoning Chain panel
+Below the selected district card is the shared reasoning chain UI.
+It renders the backend reasoning steps in a visible numbered sequence.
+
+--------------------------------------------------
+5.5 /mandi-prices
+--------------------------------------------------
+
+Purpose:
+- Adds economic intelligence to the crop-risk story.
+- Helps answer whether the farmer or FPO should sell now or hold.
+
+Main features:
+
+A. Page header
+- Eyebrow: Mandi Intelligence
+- Title: Live Mandi Price Intelligence
+- Description explains that crop risk alone is not enough for decision-making.
+
+B. District and crop selector card
+This left panel contains:
+- District dropdown
+- Crop dropdown
+- a farmer-facing answer card
+
+The farmer-facing answer card shows a plain-language sentence like:
+- crop is fetching a certain modal price in a district market today
+- recommendation text from the backend
+
+C. Automatic mandi loading
+Whenever district or crop changes:
+- the page automatically calls /api/mandi-price
+- loading state is shown until the price arrives
+
+D. Market snapshot hero panel
+This top-right block shows:
+- large modal price figure
+- market name and date
+- a badge indicating whether the source is live Agmarknet data or fallback sample data
+- four metric cards:
+  - Modal price
+  - Benchmark
+  - Market
+  - Trend
+
+E. Sell or hold recommendation panel
+This section shows:
+- recommendationShort as the main title
+- recommendation as the detailed explanation
+- a paragraph explaining that FarmPulse combines market realization with district crop-risk context
+
+F. Source and trust panel
+This section shows:
+- sourceName
+- note about data provenance or fallback status
+- official source link
+- min, modal, and max price cards
+
+--------------------------------------------------
+5.6 /institutional
+--------------------------------------------------
+
+Purpose:
+- Packages district intelligence for FPOs, insurers, and government-style monitoring.
+- Also demonstrates institutional-side guardrails.
+
+Main features:
+
+A. Page header
+- Eyebrow: Institutional
+- Title: FPO, Insurer, and Government Dashboard
+- Description emphasizes district aggregation, pre-claim signals, and early-warning outputs.
+
+B. Institutional guardrail demo banner
+This is a prominent amber section at the top.
+It contains:
+- explanation that if NDVI data is older than 14 days, insurance pre-claim signals are blocked
+- button: Trigger stale-data guardrail
+
+Trigger stale-data guardrail:
+- calls /api/simulate-edge-case with scenario=data_staleness
+- district Yavatmal
+- crop Cotton
+- language English
+
+C. Guardrail result state
+After the guardrail demo runs, the page shows a state card.
+If dataFreshnessDays > 14:
+- banner says Insurance signal blocked
+- says pre-claim forwarding stopped and flagged for manual review
+- states compliance guardrail enforced
+
+If not blocked:
+- says Insurance signal cleared
+
+D. Risk map
+The institutional page includes the shared RiskMap in risk mode.
+This uses risk-colored CircleMarkers instead of NDVI circles.
+
+Risk legend bands are:
+- Low
+- Medium
+- High
+- Critical
+
+E. Government Early Warning panel
+This panel iterates over state summaries and shows:
+- state name
+- average risk
+- count of critical districts
+- district count
+- note if emergency alert threshold is met
+
+F. Insurance Pre-Claim Signals panel
+This panel has two possible modes.
+
+If the stale-data guardrail is blocking:
+- it shows a blocked-state card
+- explains that Yavatmal cotton is intentionally withheld from insurer forwarding
+
+If not blocked:
+- it lists high-risk districts
+- each card shows district, state, crop, and risk level
+- shows estimated affected acreage percent
+- shows claim probability score
+
+G. FPO Briefing Table
+This large bottom table includes:
+- District
+- State
+- Crop
+- Risk Score
+- Risk Level
+- Acreage
+
+It is presented as JSON-ready output for institutional users.
+
+--------------------------------------------------
+5.7 /audit
+--------------------------------------------------
+
+Purpose:
+- Shows the chronological audit trail for all agent activity.
+- Proves the system is traceable and exportable.
+
+Main features:
+
+A. Page header
+- Eyebrow: Auditability
+- Title: Full Agent Audit Trail
+- Description says every agent action is timestamped, confidence-scored, and exportable.
+- Action button: Export CSV
+
+B. Filter controls
+The page provides four filter inputs:
+- Agent
+- District
+- Risk Level
+- Run ID
+
+These are implemented as text inputs.
+
+C. Audit data loading
+The page calls fetchAuditLog whenever filters change.
+The frontend merges backend entries with local cached entries and then applies filters.
+
+D. Audit table columns
+The audit table shows:
+- Timestamp
+- Agent
+- Action
+- District
+- Confidence
+- Escalation
+
+Inside the Action cell it also shows:
+- action name
+- outputSummary as smaller supporting text
+
+E. CSV export
+The Export CSV button points directly to /api/audit-log/export.
+
+==================================================
+6. SHARED VISUAL COMPONENTS
+==================================================
+
+6.1 RiskMap
+Used in:
+- /overview
+- /districts
+- /institutional
+
+Modes:
+- risk mode
+- ndvi mode
+
+Risk mode:
+- renders CircleMarkers
+- marker color comes from risk level
+- marker radius depends on risk score
+
+NDVI mode:
+- renders large district-centered Circles
+- color comes from NDVI band
+- radius depends on vegetation stress intensity
+
+The map header can also show:
+- title
+- explanatory description
+- NDVI source card when in NDVI mode
+
+6.2 AgentStatusPanel
+Used on /overview.
+Shows 4 cards with:
+- name
+- description
+- status badge
+- animated pulse when running
+
+6.3 ActivityFeed
+Used on /overview.
+Shows the last 20 SSE events with:
+- agent-specific colored border
+- agent name
+- relative time
+- event message
+- event status
+
+6.4 ReasoningChain
+Used on /districts and the farmer flow conceptually.
+Shows numbered step cards connected vertically.
+Each step includes:
+- a number bubble
+- a check mark
+- title
+- detail
+
+==================================================
+7. BACKEND ARCHITECTURE AND HOW THE WEBSITE WORKS
+==================================================
+
+The backend is a FastAPI application called FarmPulse Agent Engine.
+
+7.1 Main API endpoints
+- GET /health
+- POST /api/analyze
+- POST /api/farmer-query
+- POST /api/simulate-edge-case
+- GET /api/districts
+- GET /api/district/{district_id}
+- GET /api/mandi-price
+- GET /api/audit-log
+- GET /api/audit-log/export
+- GET /api/stream/{run_id}
+
+7.2 Core 4-agent workflow
+The main execution flow is run_pipeline().
+It executes these stages in order:
+1. satellite_scout
+2. crop_risk_analyst
+3. advisory_generator
+4. institutional_reporter
+5. human_escalation_node if escalation is required
+
+7.3 Streaming behavior
+The backend keeps a per-run asyncio queue.
+As each stage runs, it emits SSE events via emit_event().
+The frontend listens to these events on /api/stream/{run_id}.
+
+This powers:
+- the live activity feed on /overview
+- the live 4-agent step cards on /farmer-advisory
+
+==================================================
+8. BACKEND DATA SOURCES AND LOGIC
+==================================================
+
+8.1 District records
+The backend has a built-in list of agricultural districts with:
+- id
+- district name
+- state
+- coordinates
+- primary crop
+- acreage
+- KVK contact
+- default language
+
+Covered states include:
+- Maharashtra
+- Punjab
+- UP
+- MP
+- Rajasthan
+
+8.2 Language handling
+The backend supports these languages:
+- Auto
+- English
+- Hindi
+- Marathi
+- Punjabi
+- Bengali
+- Gujarati
+- Tamil
+- Telugu
+- Kannada
+- Malayalam
+
+Language resolution logic:
+- normalize manual language labels
+- if Auto, inspect the query text by Unicode range/script
+- use district default language to disambiguate Devanagari where needed
+
+8.3 Weather data
+The backend fetches forecast data from Open-Meteo.
+It calculates:
+- 7-day rainfall
+- rainfall anomaly percent
+- average temperature
+- temperature anomaly
+- average humidity
+- weather anomaly type
+
+Weather anomaly types include:
+- normal
+- flood
+- drought
+- heat
+- cold
+
+If weather fetch fails:
+- retries up to 3 times
+- falls back to last-known-good weather if available
+- otherwise generates a synthetic fallback weather block marked stale
+
+8.4 Vegetation signal
+The current deployed product does not use pixel-level district satellite extraction.
+Instead it uses a reference_snapshot vegetation signal.
+
+How that works:
+- fetch NASA POWER daily agroclimate observations for the district point
+- use rainfall, temperature, humidity, and solar data
+- convert those conditions into a vegetation proxy anchored to MODIS reference ranges
+- return NDVI-like values and provenance metadata
+
+Modes:
+- reference_snapshot when NASA POWER succeeds
+- demo_estimate when live observations are unavailable
+
+The UI is intentionally transparent about this.
+
+8.5 Crop calendar
+The backend contains crop calendars by state and crop.
+These provide:
+- stage_by_month
+- days_to_harvest
+
+This is used in risk reasoning and PHI-style compliance logic.
+
+8.6 Pest windows
+The backend contains hardcoded pest windows for some district/crop/month combinations.
+Examples include:
+- Pink bollworm in Yavatmal cotton
+- Whitefly in Bathinda cotton
+- Stem fly in Indore soybean
+- Aphid in Ludhiana wheat
+
+8.7 Soil snapshot
+The soil snapshot is generated from:
+- weather conditions
+- vegetation score
+- seeded district randomness
+
+It returns:
+- moisture percentage
+- moisture band
+- soil pH
+- nitrogen kg/ha
+- electrical conductivity
+- a summary string
+
+8.8 5-day forecast block
+The backend builds a 5-day advisory-oriented forecast with:
+- day
+- date
+- rainMm
+- maxTempC
+- minTempC
+- humidityPct
+- outlook
+
+This is used especially on the farmer page to choose the best fertilizer window.
+
+8.9 Mandi pricing
+The backend first tries live Agmarknet via data.gov.in if AGMARKNET_API_KEY exists.
+If not, it falls back to district/crop aligned sample mandi data.
+
+The response includes:
+- modal, min, and max prices
+- benchmark price
+- recommendation
+- recommendationShort
+- sourceName
+- sourceUrl
+- live boolean
+- note
+
+==================================================
+9. AGENT STAGE DETAILS
+==================================================
+
+9.1 Satellite Stress Scout
+Responsibilities:
+- resolve district
+- fetch vegetation observation
+- compute NDVI anomaly against seasonal baseline
+- compute confidence
+- detect staleness
+- fetch weather
+- produce satellite signal summary
+- add initial reasoning chain step
+- add audit entry
+- emit SSE start/complete events
+
+Important behavior:
+- if freshnessDays > 10, confidence is reduced to 41%
+- if NDVI anomaly is severe and rainfall is extremely high, a warning about water stress vs flood stress ambiguity is added
+- in data_staleness edge case, freshness is forced older
+
+9.2 Crop Risk Analyst
+Responsibilities:
+- determine crop stage and days to harvest
+- determine pest probability and pest name
+- compute risk score and category
+- decide root cause
+- decide escalate or not
+- enforce unsupported crop behavior
+- enforce stale-data escalation
+- adjust for multi-stressor conflict
+- build soil snapshot
+- build 5-day forecast
+- build query-aware recommendation plan
+- extend reasoning chain
+- add audit entry
+- emit SSE start/complete events
+
+Important guardrail behavior:
+- unsupported crop -> escalate with zero confidence
+- stale data -> escalate
+- confidence < 60 -> escalate
+- if risk is high/critical and within 21 days of harvest, chemical action is replaced by non-chemical options only
+
+9.3 Advisory Generator
+Responsibilities:
+- select farmer and institutional model route identifiers
+- render SMS advisory
+- render WhatsApp advisory
+- render institutional report
+- append guardrail disclaimer for high/critical risk in institutional text
+- add two audit entries
+- emit SSE start/complete events
+
+Important note:
+- the backend stores internal model identifiers such as farmer-advisory-engine and institutional-analysis-engine
+- the UI translates them into Haiku and Sonnet labels in the farmer summary section
+
+9.4 Institutional Reporter
+Responsibilities:
+- aggregate district and state risk outputs
+- build insurer rows
+- build government early warning block
+- detect state emergency alert threshold
+- add institutional output bundle to the response
+- add audit entry
+- emit SSE start/complete events
+
+9.5 Human Escalation node
+Runs only when state.escalate is true.
+Responsibilities:
+- emit escalation SSE events
+- append escalation step to reasoning chain
+- add audit entry for handoff_required
+
+==================================================
+10. EDGE CASES AND GUARDRAILS VISIBLE IN THE WEBSITE
+==================================================
+
+10.1 Farmer-side escalation demo
+Accessible on /farmer-advisory through Trigger escalation demo.
+Current scenario uses data staleness.
+Visible result:
+- amber escalation banner
+- KVK escalation text
+- no fabricated recommendation claim
+
+10.2 Unsupported crop behavior
+The crop dropdown on the farmer page includes Moringa.
+Because Moringa is not in SUPPORTED_CROPS, the backend can escalate and treat it as unsupported domain.
+
+10.3 Institutional stale-data guardrail
+Accessible on /institutional through Trigger stale-data guardrail.
+Visible result:
+- insurance signal blocked state
+- compliance-style explanation
+- pre-claim routing paused
+
+10.4 NDVI transparency guardrail
+The map and district pages explicitly state when the vegetation layer is a reference snapshot rather than raw polygon satellite extraction.
+
+==================================================
+11. AUDITABILITY DETAILS
+==================================================
+
+Every meaningful pipeline stage writes audit data to SQLite.
+Fields include:
+- timestamp
+- run ID
+- district
+- state
+- crop
+- agent
+- action
+- input summary
+- output summary
+- model used
+- tokens consumed
+- confidence
+- escalation
+- risk level
+
+The website surfaces this in three ways:
+- dedicated /audit page
+- audit link card on /farmer-advisory
+- local browser caching and merge behavior for demo reliability
+
+==================================================
+12. THEME, STYLING, AND INTERACTION PATTERNS
+==================================================
+
+12.1 Visual language
+The app uses:
+- rounded cards
+- white or light surfaces
+- strong green primary accents
+- amber for warning/guardrail states
+- red for blocked/error/escalation states
+- phone mockups for farmer-facing delivery demos
+
+12.2 Mobile behavior
+- mobile navigation becomes a sticky horizontal chip row
+- scroll is handled inside content panels where needed
+- many large tables and panels use internal scrolling rather than page overflow
+
+12.3 Toast notifications
+The website uses react-hot-toast for many user feedback moments, such as:
+- could not load district summaries
+- advisory ready
+- channel preview ready
+- escalation demo ready
+- could not load audit log
+
+==================================================
+13. CURRENT LIMITATIONS OR TRANSPARENCY NOTES
+==================================================
+
+To describe the current website honestly:
+- the district vegetation layer is not a polygon-level satellite clip; it is a reference-backed district vegetation proxy
+- the NDVI trend snapshot on /overview is a UI trend widget and not the same provenance-driven district map layer
+- mandi pricing can be live if Agmarknet credentials exist, but otherwise clearly uses labeled fallback data
+- browser voice input depends on browser support for SpeechRecognition
+- audit persistence on serverless hosting is supported by frontend cache merging, not only by backend durability
+
+==================================================
+14. SUMMARY OF EXACT PAGE COUNT AND FEATURE COVERAGE
+==================================================
+
+Total main pages: 7
+
+1. /overview
+- command center
+- run full analysis button
+- 4-agent status cards
+- summary stats
+- impact card
+- risk map
+- live activity feed
+- NDVI trend chart
+- demo scenario pulse card
+
+2. /farmer-advisory
+- bilingual smartphone demo
+- district/crop/language selectors
+- state field
+- farmer query textarea
+- browser voice input
+- simulated Marathi voice demo
+- get farmer advice action
+- escalation demo action
+- live 4-agent run cards with confidence
+- run ID
+- advisory or escalation banner
+- soil summary cards
+- query used card
+- 5-day forecast panel
+- reasoning explanation panel
+- one-call return summary panel
+- audit link
+
+3. /channel-fallback
+- district/crop/language selectors
+- farmer query box
+- channel preview action
+- WhatsApp phone mockup
+- SMS phone mockup
+- deployment realism cards
+
+4. /districts
+- NDVI stress heat map
+- NDVI provenance card
+- searchable district table
+- open report actions
+- selected district detail panel
+- reasoning chain panel
+
+5. /mandi-prices
+- district/crop selectors
+- farmer-facing mandi summary
+- market snapshot hero
+- live/fallback badge
+- metric cards
+- sell/hold recommendation panel
+- source and trust panel
+- min/modal/max stats
+
+6. /institutional
+- stale-data guardrail trigger
+- insurance blocked/cleared state
+- risk map
+- government early warning list
+- insurance pre-claim signal section
+- FPO briefing table
+
+7. /audit
+- filters
+- export CSV button
+- audit table
+- confidence and escalation visibility
+
+==================================================
+15. CONCLUSION
+==================================================
+
+FarmPulse AI is not just a set of charts. The website is structured as a visible agentic workflow product with:
+- 7 main pages
+- multilingual farmer advisory
+- browser voice input and demo-safe sample voice flow
+- district exploration and provenance-aware vegetation mapping
+- mandi economics
+- institutional guardrails
+- live agent streaming
+- audit traceability
+- direct page-to-page continuity from farmer query to audit trail
+
+This file is intended to function as a full human-readable and AI-readable map of the current website.

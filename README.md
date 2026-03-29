@@ -192,6 +192,21 @@ VITE_API_BASE=https://api-orcin-alpha.vercel.app
 
 - `₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.`
 
+## Impact Model
+
+FarmPulse uses order-of-magnitude assumptions that align with the hackathon guidance: state assumptions clearly and use back-of-envelope math only where the logic holds.
+
+| Assumption | Value | Source |
+| --- | --- | --- |
+| Addressable smallholder farmers | 86M | Agricultural Census 2015-16, operational holdings below 2 hectares |
+| Average seasonal income | ₹77,000-₹1,10,000 | NSSO 70th Round (2013), rural cultivator household income range commonly cited for smallholder contexts |
+| Crop loss from preventable stress events | 20-40% of seasonal income | NABARD NAFIS 2016-17 and cotton-belt field-loss studies |
+| Estimated loss prevented per farmer | ₹15,000-₹30,000 | Derived as 20-40% of average income, assuming one meaningful intervention window per season |
+| Total addressable impact | ₹2.5L Cr | ₹30K × 86M upper-bound scenario; this is not a revenue claim |
+| Zero-hardware assumption | 100% coverage | No IoT sensor required; NASA POWER and Open-Meteo are free public APIs |
+
+These are order-of-magnitude estimates. Actual impact depends on adoption rate, advisory quality, and farmer follow-through, none of which are claimed here.
+
 ## Notes
 
 - The current vegetation layer is intentionally transparent about being a reference snapshot, not a raw district polygon satellite clip.
