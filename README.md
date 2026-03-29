@@ -1,93 +1,137 @@
 # FarmPulse
 
-FarmPulse is an agentic crop-risk intelligence platform built for the ET GenAI Hackathon 2026 Track 5 challenge. This repository is organized as a clean multi-app workspace so the frontend, backend, and deployment surfaces are easy to understand and publish.
+FarmPulse is an agentic crop-risk intelligence platform built for the ET GenAI Hackathon 2026, Track 5: Domain-Specialized Agents. It helps farmers, FPOs, insurers, and government teams act earlier by combining district vegetation stress, weather, crop-stage logic, pest risk, multilingual advisory generation, and auditable agent workflows.
 
-## Structure
+The flagship demo centers on a farmer in Maharashtra asking for help in Marathi. FarmPulse reasons across district conditions and a 5-day forecast, returns actionable guidance in the same language, and then carries the same run into institutional reporting and audit logs.
+
+## Live Links
+
+- Web app: https://web-two-chi-46.vercel.app
+- API: https://api-orcin-alpha.vercel.app
+- GitHub: https://github.com/axnav28/farmPulseV2
+
+## Core Product
+
+### `/overview`
+Command center with live agent status, district coverage, activity feed, and impact framing.
+
+### `/farmer-advisory`
+The centerpiece multilingual farmer flow. Farmers can select district, crop, and language, type or speak a query, watch the 4-agent pipeline complete, and receive a same-language answer with confidence, reasoning, and audit linkage.
+
+### `/channel-fallback`
+Shows how the same advisory appears as WhatsApp and SMS output for real-world farmer delivery.
+
+### `/districts`
+District explorer with NDVI stress heat map, district table, root-cause summaries, reasoning visibility, and vegetation provenance.
+
+### `/mandi-prices`
+Mandi price intelligence with crop and district selection plus sell-or-hold framing.
+
+### `/institutional`
+Institutional dashboard for FPO, insurer, and government-style reporting, including a stale-data guardrail demo.
+
+### `/audit`
+Full audit trail with filters, run-level traceability, and export support.
+
+## Agent Architecture
+
+FarmPulse runs as a 4-agent workflow:
+
+1. Satellite Stress Scout
+   Detects vegetation stress and adjusts confidence when freshness degrades.
+
+2. Crop Risk Analyst
+   Combines crop stage, weather anomalies, pest pressure, and district context into a structured risk report.
+
+3. Advisory Generator
+   Produces farmer-facing guidance in the selected language, including short-format advisory output.
+
+4. Institutional Reporter
+   Aggregates each run into report-ready outputs, audit state, and institutional summaries.
+
+## Guardrails
+
+FarmPulse is designed to refuse or escalate when confidence is not good enough.
+
+Visible examples in the product:
+- low-confidence farmer case -> escalates to KVK agronomist
+- unsupported or uncertain case -> no fabricated recommendation
+- stale institutional data -> insurance signal is blocked instead of forwarded
+- uncertain vegetation signal -> explicitly marked as lower confidence
+
+## Data Stack
+
+FarmPulse uses a pragmatic real-data stack.
+
+### Weather and Agroclimate
+- Open-Meteo for forecast context
+- NASA POWER Daily Agroclimatology for observed agroclimate inputs
+
+### Vegetation Signal
+FarmPulse does **not** claim pixel-level live satellite extraction in the current deployed version.
+
+Instead, the district vegetation layer is a transparent `reference_snapshot` signal:
+- built from live NASA POWER agroclimate observations
+- anchored to NASA MODIS vegetation reference ranges
+- shown with explicit provenance in the UI
+- labeled clearly so demo users are not misled into thinking this is a raw district polygon satellite clip
+
+Official sources:
+- NASA POWER Daily Agroclimatology API: https://power.larc.nasa.gov/
+- NASA Earthdata MODIS MOD13Q1 reference dataset: https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061
+- Open-Meteo: https://open-meteo.com/
+
+### Mandi Pricing
+- Agmarknet catalog via data.gov.in when API access is configured
+- clearly labeled fallback data when live mandi records are unavailable
+
+## API Surface
+
+- `GET /health`
+- `POST /api/analyze`
+- `POST /api/farmer-query`
+- `POST /api/simulate-edge-case`
+- `GET /api/districts`
+- `GET /api/district/{district_id}`
+- `GET /api/mandi-price`
+- `GET /api/audit-log`
+- `GET /api/audit-log/export`
+- `GET /api/stream/{run_id}`
+
+## Tech Stack
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Leaflet
+- Recharts
+
+### Backend
+- FastAPI
+- Pydantic
+- SQLite
+- httpx
+- python-dotenv
+
+## Repository Layout
 
 ```text
 apps/
-  api/   FastAPI multi-agent engine, SSE progress stream, SQLite audit log
-  web/   React + TypeScript + Vite frontend for dashboards and demo flows
+  api/   FastAPI backend, agent workflow, SSE stream, audit log
+  web/   React + TypeScript + Vite frontend
 ```
-
-## Key Flows
-
-- `/overview`: command center with live agent status, heat map, and activity feed
-- `/districts`: district explorer with visible reasoning chain and NDVI provenance labels
-- `/farmer-advisory`: multilingual farmer advisory centerpiece demo using typed input
-- `/channel-fallback`: WhatsApp and SMS delivery mockups for real field deployment
-- `/mandi-prices`: mandi price intelligence with sell-or-hold guidance and Agmarknet source wiring
-- `/institutional`: FPO, insurer, and government reporting views
-- `/audit`: full agent audit trail with export support
-
-## NDVI Data Pipeline
-
-FarmPulse now uses a practical live-data vegetation signal instead of blocked Earth Engine extraction.
-
-- Backend vegetation scoring combines live NASA POWER agroclimate observations with Open-Meteo forecast context already used elsewhere in the advisory stack.
-- The displayed vegetation score is anchored to NASA MODIS vegetation-index reference ranges, so the app is transparent that this is a district-level reference snapshot rather than a pixel-level satellite clip.
-- If NASA POWER is temporarily unavailable, the API falls back to a clearly labeled estimate instead of pretending the value is live.
-
-Official sources:
-
-- NASA POWER Daily Agroclimatology API: https://power.larc.nasa.gov/
-- NASA Earthdata MODIS MOD13Q1 reference dataset: https://www.earthdata.nasa.gov/data/catalog/lpcloud-mod13q1-061
-- Open-Meteo forecast API: https://open-meteo.com/
-
-### Local Setup
-
-Set these environment variables on the API host or in `apps/api/.env`:
-
-```env
-POWER_LOOKBACK_DAYS=30
-NDVI_CACHE_TTL_SECONDS=43200
-```
-
-No Earth Engine project or service-account registration is required for this path.
-
-## Mandi Price Notes
-
-- The mandi page is wired to the official Agmarknet catalog on data.gov.in.
-- If `AGMARKNET_API_KEY` is configured on the API host, FarmPulse attempts a live market fetch for the selected district and crop.
-- If live records are unavailable, the UI falls back to clearly labeled demo market samples so the page still works in hackathon and Vercel demos.
-
-## Vercel-Ready Notes
-
-This version removes local speech-to-text and speech synthesis so the project is easier to deploy on Vercel. The farmer advisory flow is text-based and still supports multilingual responses through language detection and district-aware routing.
-
-## Render Backend Deployment
-
-The frontend can stay on Vercel, but the FastAPI backend is a better fit for Render than for Vercel serverless. This repo now includes a root [render.yaml](/Users/arnav/Desktop/code/FarmPulse AI/render.yaml) Blueprint for the API service.
-
-Render setup in this repo:
-
-- `rootDir: apps/api` so the Python service builds from the API app only. Render's monorepo docs note that files outside the configured `rootDir` are not available to the service at build or runtime.
-- `buildCommand: pip install -r requirements.txt`
-- `startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT`
-- `healthCheckPath: /health`
-- `FARMPULSE_DB_PATH=/tmp/farmpulse.db` for a simple demo database path
-
-Important persistence note:
-
-- Render documents that the default filesystem is ephemeral. That means the current SQLite audit database is suitable for demos, but not for durable production audit history unless you attach a persistent disk or move to an external database.
-
-To switch the Vercel frontend to the Render backend, set this environment variable in the Vercel web project:
-
-```env
-VITE_API_BASE=https://your-render-service.onrender.com
-```
-
-A frontend example file is included at [apps/web/.env.example](/Users/arnav/Desktop/code/FarmPulse AI/apps/web/.env.example).
 
 ## Local Development
 
-### 1. Install the web app
+### 1. Install web dependencies
 
 ```bash
 npm install --prefix apps/web
 ```
 
-### 2. Install the API dependencies
+### 2. Install backend dependencies
 
 ```bash
 python3 -m venv .venv
@@ -95,29 +139,61 @@ source .venv/bin/activate
 pip install -r apps/api/requirements.txt
 ```
 
-### 3. Start the API
+### 3. Configure local API environment
+
+Create `apps/api/.env` with:
+
+```env
+POWER_LOOKBACK_DAYS=30
+NDVI_CACHE_TTL_SECONDS=43200
+```
+
+Optional:
+- `AGMARKNET_API_KEY` for live mandi price pulls
+
+### 4. Start the API
 
 ```bash
 npm run dev:api
 ```
 
-### 4. Start the web app
+### 5. Start the web app
 
 ```bash
 npm run dev:web
 ```
 
 Open:
-
 - Web: `http://localhost:5173`
 - API: `http://127.0.0.1:8000`
-- API health: `http://127.0.0.1:8000/health`
 
-The frontend expects the API on `http://127.0.0.1:8000` during local development.
+## Deployment
+
+The current live stack is deployed on Vercel.
+
+Set this for frontend builds:
+
+```env
+VITE_API_BASE=https://api-orcin-alpha.vercel.app
+```
+
+## Demo Flow
+
+1. Open `/overview` to show the command center.
+2. Open `/farmer-advisory` and run the Maharashtra cotton scenario.
+3. Show the 4-agent progress flow, per-agent confidence, and the final advisory.
+4. Trigger the escalation demo to show refusal behavior.
+5. Open `/channel-fallback` to show WhatsApp and SMS delivery.
+6. Open `/mandi-prices` to show economic intelligence beyond crop risk.
+7. Open `/institutional` to show stale-data blocking and institutional readiness.
+8. Open `/audit` to prove every action is traceable.
+
+## Impact
+
+- `₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.`
 
 ## Notes
 
-- The backend uses Open-Meteo weather with retry and fallback behavior.
-- NDVI values now use a NASA POWER and MODIS-referenced vegetation signal, with clear fallback labeling if the live climate feed is unavailable.
-- Auditability, multilingual advisory generation, and edge-case escalation are first-class demo features.
-- The repository is intentionally structured for public GitHub sharing and straightforward deployment.
+- The current vegetation layer is intentionally transparent about being a reference snapshot, not a raw district polygon satellite clip.
+- The product prioritizes reliability, clarity, and visible agent behavior over hidden automation.
+- The repository is structured to be clean, publishable, and easy to demo.

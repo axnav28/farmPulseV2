@@ -3,7 +3,7 @@
 > Agentic crop risk intelligence platform for Indian agriculture, built for the ET GenAI Hackathon domain-specialized agents track.
 
 ## Site Summary
-- FarmPulse AI monitors district-level crop stress using synthetic NDVI, weather data, crop calendars, and pest-risk heuristics.
+- FarmPulse AI monitors district-level crop stress using a NASA POWER-backed vegetation reference snapshot, weather data, crop calendars, and pest-risk heuristics.
 - It provides multilingual farmer advisories, including Marathi advisory flows for Maharashtra.
 - It exposes institutional dashboards for FPOs, insurers, and government early-warning workflows.
 - It maintains a full agent audit trail with confidence, escalations, and timestamps.

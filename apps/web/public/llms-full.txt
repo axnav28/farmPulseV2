@@ -1,22 +1,22 @@
 # FarmPulse AI Full Guide
 
-FarmPulse AI is a React + TypeScript + Vite frontend with a FastAPI backend. It simulates a four-agent crop intelligence system for Indian agriculture:
+FarmPulse AI is a React + TypeScript + Vite frontend with a FastAPI backend. It implements a four-agent agricultural intelligence workflow for Indian farming contexts and hackathon-style demos.
 
 1. Satellite Stress Scout
-- Ingests district-level NDVI-style stress signals.
-- Compares current values against crop-season baselines.
+- Builds a district vegetation stress signal from NASA POWER agroclimate observations anchored to MODIS reference ranges.
+- Compares current conditions against crop-season baselines.
 - Flags anomalies and data staleness.
 
 2. Crop Risk Analyst
-- Combines stress signals with weather anomalies, crop stage, and pest-risk heuristics.
+- Combines vegetation stress, weather anomalies, crop stage, and pest-risk heuristics.
 - Produces a structured risk report with confidence and escalation behavior.
 
 3. Advisory Generator
 - Generates farmer-facing advisories in Marathi, Hindi, Punjabi, or English.
 - Produces SMS, WhatsApp, and institutional outputs.
-- Handles unknown crops and uncertainty by escalating instead of guessing.
+- Handles uncertainty by escalating instead of guessing.
 
-4. Institutional Reporter and Orchestrator
+4. Institutional Reporter
 - Aggregates risk across districts and states.
 - Produces insurer, FPO, and government-style summaries.
 - Maintains audit logs and escalation records.
@@ -27,58 +27,74 @@ FarmPulse AI is a React + TypeScript + Vite frontend with a FastAPI backend. It 
 Command center dashboard with:
 - live agent statuses
 - summary statistics
-- state and district risk views
-- recent agent activity feed
-- one-click full analysis flow
+- recent agent activity
+- impact framing
 
 ### /districts
 District risk explorer with:
+- NDVI stress heat map
 - searchable district table
 - risk levels and root causes
 - district detail side panel
-- advisory generation actions
+- vegetation provenance labels
 
 ### /farmer-advisory
 The main demo route.
 Key experience:
 - select district, crop, and language
-- type the farmer query directly
+- type or speak the farmer query
 - show soil conditions and 5-day forecast
 - generate same-language farmer guidance
-- show the reasoning steps and summary
+- show the reasoning steps, confidence, and audit link
+- trigger an escalation demo when confidence is too low
 
 Primary sample query:
 "माझ्या कापूस पिकावर पिवळे डाग पडत आहेत. खत कधी द्यावे?"
+
+### /channel-fallback
+Delivery mockups for:
+- WhatsApp
+- SMS
+
+### /mandi-prices
+Market intelligence route with:
+- district and crop selection
+- mandi price summary
+- sell-or-hold recommendation
 
 ### /institutional
 Institutional reporting with:
 - FPO briefing summaries
 - insurance pre-claim signals
 - government early-warning view
+- stale-data guardrail demo
 
 ### /audit
 Audit log page with:
 - chronological agent actions
 - timestamps
-- model used
-- tokens consumed
 - confidence
 - escalation status
+- run-level filtering
 
 ## Backend APIs
-- GET /health: health check
-- GET /api/districts: district and state summaries
-- GET /api/district/{id}: single district detail
-- POST /api/analyze: full pipeline execution
-- POST /api/farmer-query: farmer-focused run
-- GET /api/audit-log: audit trail entries
-- POST /api/simulate-edge-case: triggers demo guardrail scenarios
+- GET /health
+- GET /api/districts
+- GET /api/district/{id}
+- POST /api/analyze
+- POST /api/farmer-query
+- GET /api/audit-log
+- GET /api/audit-log/export
+- GET /api/mandi-price
+- GET /api/stream/{run_id}
+- POST /api/simulate-edge-case
 
-## Demo Scenario
-The flagship story uses Yavatmal, Maharashtra with Cotton and Marathi language selection.
-The system evaluates NDVI stress, soil moisture, nitrogen context, the upcoming 5-day weather pattern, crop stage, and pest-risk cues before returning a Marathi recommendation.
+## Data Notes
+- Weather uses Open-Meteo and NASA POWER.
+- The vegetation layer is a transparent reference snapshot, not a raw district polygon satellite extract.
+- Mandi prices can use Agmarknet when API access is configured, with a labeled fallback otherwise.
 
 ## Important Behavior
-- The frontend is a client-rendered SPA.
+- The frontend is a client-rendered SPA with prerendered route descriptions for fetchers.
 - This file exists to help AI agents, crawlers, and fetchers understand the site without executing JavaScript.
 - For live UI interaction, open the website in a browser.
