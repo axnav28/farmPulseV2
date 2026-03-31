@@ -57,6 +57,7 @@ const speechLanguageMap: Record<string, string> = {
 };
 
 const defaultQuery = sampleQueries.Marathi;
+const marathiSampleSpokenText = 'माझ्या कापूस पिकावर पिवळे डाग पडत आहेत खत कधी द्यावे';
 const englishDemoQuery = sampleQueries.English;
 const hindiDemoQuery = sampleQueries.Hindi;
 const languageOptions = ['Auto', 'Marathi', 'Hindi', 'Punjabi', 'English', 'Bengali', 'Gujarati', 'Tamil', 'Telugu', 'Kannada', 'Malayalam'];
@@ -91,6 +92,33 @@ function speechLanguageFor(language: string, state?: string) {
     return 'hi-IN';
   }
   return speechLanguageMap[language] ?? 'hi-IN';
+}
+
+function sanitizeSpeechText(text: string) {
+  return text.replace(/[!?.,:;]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function pickPreferredSpeechVoice(preferredLanguages: string[]) {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    return null;
+  }
+
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) {
+    return null;
+  }
+
+  const normalized = preferredLanguages.map((item) => item.toLowerCase());
+  for (const preferred of normalized) {
+    const exact = voices.find((voice) => voice.lang?.toLowerCase() === preferred);
+    if (exact) return exact;
+
+    const partial = voices.find((voice) => voice.lang?.toLowerCase().startsWith(preferred));
+    if (partial) return partial;
+  }
+
+  const indicNameFallback = voices.find((voice) => /marathi|hindi|indic|india/i.test(`${voice.name} ${voice.lang}`));
+  return indicNameFallback ?? null;
 }
 
 export default function FarmerAdvisory() {
@@ -203,6 +231,7 @@ export default function FarmerAdvisory() {
 
   async function playSampleVoiceDemo() {
     const marathiSample = sampleQueries.Marathi;
+    const spokenSample = sanitizeSpeechText(marathiSampleSpokenText);
     setLanguage('Marathi');
     setDistrict('Yavatmal');
     setCrop('Cotton');
@@ -218,9 +247,15 @@ export default function FarmerAdvisory() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(marathiSample);
-        utterance.lang = 'mr-IN';
-        utterance.rate = 0.92;
+        const utterance = new SpeechSynthesisUtterance(spokenSample);
+        const selectedVoice = pickPreferredSpeechVoice(['mr-IN', 'mr', 'hi-IN', 'hi']);
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+          utterance.lang = selectedVoice.lang || 'mr-IN';
+        } else {
+          utterance.lang = 'hi-IN';
+        }
+        utterance.rate = 0.9;
         utterance.pitch = 1;
         utterance.onend = () => {
           void finish();
@@ -230,6 +265,28 @@ export default function FarmerAdvisory() {
             void finish();
           }, 1200);
         };
+
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices.length && 'onvoiceschanged' in window.speechSynthesis) {
+          const synth = window.speechSynthesis;
+          const previous = synth.onvoiceschanged;
+          synth.onvoiceschanged = () => {
+            synth.onvoiceschanged = previous ?? null;
+            const lateVoice = pickPreferredSpeechVoice(['mr-IN', 'mr', 'hi-IN', 'hi']);
+            if (lateVoice) {
+              utterance.voice = lateVoice;
+              utterance.lang = lateVoice.lang || 'mr-IN';
+            }
+            synth.speak(utterance);
+          };
+          window.setTimeout(() => {
+            if (synth.speaking || synth.pending) return;
+            synth.onvoiceschanged = previous ?? null;
+            synth.speak(utterance);
+          }, 250);
+          return;
+        }
+
         window.speechSynthesis.speak(utterance);
         return;
       } catch {
