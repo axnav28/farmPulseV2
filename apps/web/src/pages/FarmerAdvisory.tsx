@@ -508,7 +508,7 @@ export default function FarmerAdvisory() {
                   type='button'
                   onClick={isListening ? stopVoiceInput : startVoiceInput}
                   disabled={!voiceSupported}
-                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${isListening ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/30 dark:bg-red-500/12 dark:text-red-200' : 'border-border bg-surface-1 text-text-main dark:bg-[rgba(17,35,24,0.92)] dark:text-white/90'}`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${isListening ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-400/30 dark:bg-red-500/12 dark:text-red-200' : 'border-border bg-surface-1 text-text-main'}`}
                 >
                   {isListening ? <Square size={15} /> : <Mic size={15} />}
                   {isListening ? 'Stop' : 'Voice input'}
@@ -518,10 +518,10 @@ export default function FarmerAdvisory() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 rows={5}
-                className='mt-4 w-full resize-none rounded-[24px] border border-border bg-surface-1 px-4 py-3 text-[15px] leading-7 text-text-main shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 dark:bg-[rgba(17,35,24,0.94)] dark:text-white/92 dark:shadow-none dark:focus:border-emerald-400 dark:focus:ring-emerald-500/20'
+                className='mt-4 w-full resize-none rounded-[24px] border border-border bg-surface-1 px-4 py-3 text-[15px] leading-7 text-text-main shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100'
                 placeholder={sampleQuery}
               />
-              <div className='mt-4 rounded-2xl border border-primary/15 bg-surface-1 p-4 dark:bg-[rgba(17,35,24,0.94)]'>
+              <div className='mt-4 rounded-2xl border border-primary/15 bg-surface-1 p-4'>
                 <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                   <div>
                     <p className='text-sm font-semibold text-text-main'>Simulated Marathi voice note</p>
@@ -531,14 +531,14 @@ export default function FarmerAdvisory() {
                     type='button'
                     onClick={playSampleVoiceDemo}
                     disabled={loading || isPlayingSampleVoice}
-                    className='inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-emerald-50 px-4 py-2 text-sm font-semibold text-primary disabled:opacity-60 dark:border-emerald-400/25 dark:bg-emerald-500/12 dark:text-emerald-200'
+                    className='inline-flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-emerald-50 px-4 py-2 text-sm font-semibold text-primary disabled:opacity-60'
                   >
                     <Mic size={15} />
                     {isPlayingSampleVoice ? 'Playing sample...' : 'Play Marathi sample'}
                   </button>
                 </div>
               </div>
-              <p className='mt-3 text-xs text-text-muted dark:text-white/65'>
+              <p className='mt-3 text-xs text-text-muted'>
                 {voiceSupported
                   ? `Mic language follows the selected language. Current voice locale: ${speechLanguageFor(language, currentDistrict?.state)}`
                   : 'Browser voice input is not supported here. Chrome and Android browsers work best.'}
@@ -724,12 +724,12 @@ function SelectField({ label, value, onChange, options }: { label: string; value
     <label className='block'>
       <span className='text-xs font-semibold uppercase tracking-[0.24em] text-text-muted'>{label}</span>
       <div className='mt-2 relative'>
-        <select value={value} onChange={(event) => onChange(event.target.value)} className='w-full appearance-none rounded-[22px] border border-border bg-surface-1 px-4 py-3 pr-10 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 dark:bg-[rgba(17,35,24,0.94)] dark:text-white/92 dark:shadow-none dark:focus:border-emerald-400 dark:focus:ring-emerald-500/20'>
+        <select value={value} onChange={(event) => onChange(event.target.value)} className='w-full appearance-none rounded-[22px] border border-border bg-surface-1 px-4 py-3 pr-10 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)] outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100'>
           {options.map((option) => (
             <option key={option} value={option}>{option}</option>
           ))}
         </select>
-        <div className='pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400 dark:text-white/55'>
+        <div className='pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400'>
           <span className='text-xs'>▼</span>
         </div>
       </div>
@@ -741,7 +741,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <span className='text-xs font-semibold uppercase tracking-[0.24em] text-text-muted'>{label}</span>
-      <div className='mt-2 rounded-[22px] border border-border bg-surface-1 px-4 py-3 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)] dark:bg-[rgba(17,35,24,0.94)] dark:text-white/92 dark:shadow-none'>{value}</div>
+      <div className='mt-2 rounded-[22px] border border-border bg-surface-1 px-4 py-3 text-sm font-medium text-text-main shadow-[0_8px_20px_rgba(15,23,42,0.05)]'>{value}</div>
     </div>
   );
 }
