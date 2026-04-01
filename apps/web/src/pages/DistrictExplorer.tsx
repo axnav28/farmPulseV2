@@ -72,7 +72,7 @@ export default function DistrictExplorer() {
       ) : null}
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-        <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
+        <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)] xl:min-h-[42rem] xl:max-h-[calc(100dvh-11rem)]">
           <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-base font-semibold text-text-main">Monitored Districts</h3>
@@ -85,7 +85,7 @@ export default function DistrictExplorer() {
               className="rounded-full border border-border bg-surface-2 px-4 py-2 text-sm text-text-main outline-none ring-0"
             />
           </div>
-          <div className="table-scroll touch-scroll">
+          <div className="touch-scroll min-h-0 overflow-auto xl:max-h-[calc(100dvh-16rem)]">
             <table className="table-sticky min-w-[760px] text-left text-sm">
               <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
                 <tr>
@@ -125,7 +125,7 @@ export default function DistrictExplorer() {
           </div>
         </div>
 
-        <div className="min-w-0 space-y-6 xl:sticky xl:top-6">
+        <div className="min-w-0 space-y-6 xl:sticky xl:top-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:pr-1">
           <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
             <h3 className="text-base font-semibold text-text-main">Selected District</h3>
             {loadingDetail && <p className="mt-4 text-sm text-text-muted">Loading agent reasoning...</p>}

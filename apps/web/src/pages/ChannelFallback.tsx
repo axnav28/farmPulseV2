@@ -192,7 +192,7 @@ function PhoneFrame({
             </div>
             <Smartphone size={18} className="text-text-muted" />
           </div>
-          <div className="mt-4">{children}</div>
+          <div className="touch-scroll mt-4 max-h-[29rem] overflow-y-auto">{children}</div>
         </div>
       </div>
     </div>

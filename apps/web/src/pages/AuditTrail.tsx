@@ -43,7 +43,7 @@ export default function AuditTrail() {
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
-        <div className="table-scroll touch-scroll">
+        <div className="touch-scroll overflow-auto xl:max-h-[calc(100dvh-16rem)]">
           <table className="table-sticky min-w-[900px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
               <tr>

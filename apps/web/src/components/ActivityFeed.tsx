@@ -18,7 +18,7 @@ export default function ActivityFeed({ events }: { events: AgentEvent[] }) {
         <h3 className="text-base font-semibold text-text-main">Agent Activity Feed</h3>
         <span className="text-xs uppercase tracking-[0.2em] text-text-muted">Last 20 events</span>
       </div>
-      <div className="space-y-3">
+      <div className="touch-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-2">
         {events.map((event, index) => (
           <div key={`${event.timestamp}-${index}`} className={`rounded-2xl border-l-4 bg-surface-2 p-4 font-mono text-xs ${agentAccent[event.agent] ?? 'border-border'}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -575,7 +575,7 @@ export default function FarmerAdvisory() {
           <div className='flex min-h-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
             <p className='text-sm font-semibold text-text-main'>Live end-to-end agent run</p>
             <p className='mt-1 text-sm leading-6 text-text-muted'>A single `/api/farmer-query` call streams all four agent stages and returns the farmer answer, risk score, audit entry, and institutional report together.</p>
-            <div className='mt-4 space-y-3'>
+            <div className='touch-scroll mt-4 max-h-[23rem] space-y-3 overflow-auto pr-1'>
               {agentFlow.map((item) => (
                 <AgentFlowCard key={item.agent} item={item} />
               ))}
@@ -606,7 +606,7 @@ export default function FarmerAdvisory() {
               )}
 
               {response && (
-                <div className='mt-5 min-w-0 flex-1 space-y-4'>
+                <div className='touch-scroll mt-5 min-w-0 flex-1 space-y-4 overflow-auto pr-1'>
                   {response.escalate ? (
                     <div className='min-w-0 rounded-3xl border border-amber-300 bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-[0_10px_30px_rgba(245,158,11,0.14)]'>
                       <div className='flex items-start gap-3'>
@@ -649,7 +649,7 @@ export default function FarmerAdvisory() {
             <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] lg:min-h-[34rem]'>
               <p className='text-sm font-semibold text-text-main'>5-day weather</p>
               <p className='mt-1 text-sm text-text-muted'>A drier day is usually safer for fertilizer application.</p>
-              <div className='mt-4 flex-1 space-y-3'>
+              <div className='touch-scroll mt-4 flex-1 space-y-3 overflow-auto pr-1'>
                 {(response?.forecast5d ?? []).map((day) => (
                   <ForecastRow key={day.date} day={day} highlight={bestDay?.date === day.date} />
                 ))}
@@ -662,7 +662,7 @@ export default function FarmerAdvisory() {
             <div className='grid min-h-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)]'>
               <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] xl:min-h-[34rem]'>
                 <p className='text-sm font-semibold text-text-main'>Why the agent suggested this</p>
-                <div className='mt-4 flex-1 space-y-3'>
+                <div className='touch-scroll mt-4 flex-1 space-y-3 overflow-auto pr-1'>
                   {response.reasoningChain.map((item, index) => (
                     <div key={`${item.title}-${index}`} className='rounded-2xl border border-border bg-surface-2 p-4'>
                       <p className='text-sm font-semibold text-text-main'>Step {index + 1}: {item.title}</p>
@@ -674,7 +674,7 @@ export default function FarmerAdvisory() {
 
               <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] xl:min-h-[34rem]'>
                 <p className='text-sm font-semibold text-text-main'>Returned in one API call</p>
-                <div className='mt-4 flex-1 space-y-3'>
+                <div className='touch-scroll mt-4 flex-1 space-y-3 overflow-auto pr-1'>
                   <SummaryRow label='SMS advisory' value={response.advisorySms} />
                   <SummaryRow label='Risk score' value={`${response.riskReport.riskScore}/100 • ${response.riskReport.riskCategory}`} />
                   <SummaryRow label='Confidence' value={`${response.confidence.toFixed(0)}%`} />

@@ -97,7 +97,7 @@ export default function InstitutionalDashboard() {
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
         <RiskMap districts={districtsData?.districts ?? []} height={500} />
 
-        <div className="min-w-0 space-y-6">
+        <div className="min-w-0 space-y-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:pr-1">
           <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
             <h3 className="text-base font-semibold text-text-main">Government Early Warning</h3>
             <div className="mt-4 space-y-3">
@@ -161,7 +161,7 @@ export default function InstitutionalDashboard() {
           <h3 className="text-base font-semibold text-text-main">FPO Briefing Table</h3>
           <span className="rounded-full bg-surface-2 px-4 py-2 text-xs font-semibold text-text-main">JSON-ready output</span>
         </div>
-        <div className="table-scroll touch-scroll">
+        <div className="touch-scroll overflow-auto xl:max-h-[calc(100dvh-18rem)]">
           <table className="table-sticky min-w-[720px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
               <tr>
