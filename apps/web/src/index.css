@@ -109,4 +109,63 @@
     background: color-mix(in srgb, var(--surface-1) 92%, transparent);
     backdrop-filter: blur(10px);
   }
+
+  .app-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .app-table thead th {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 95%, transparent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .app-table tbody tr {
+    transition: background-color 160ms ease;
+  }
+
+  .app-table tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  }
+
+  .app-table tbody tr:hover {
+    background: color-mix(in srgb, var(--surface-2) 92%, white 8%);
+  }
+
+  .app-table tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 78%, transparent);
+    vertical-align: top;
+    color: var(--text-main);
+  }
+
+  .app-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .table-shell {
+    border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+    border-radius: 1.5rem;
+    background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  }
+
+  .table-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+    background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
 }

@@ -85,31 +85,31 @@ export default function DistrictExplorer() {
               className="rounded-full border border-border bg-surface-2 px-4 py-2 text-sm text-text-main outline-none ring-0"
             />
           </div>
-          <div className="touch-scroll min-h-0 overflow-auto xl:max-h-[calc(100dvh-16rem)]">
-            <table className="table-sticky min-w-[760px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
+          <div className="table-shell touch-scroll min-h-0 overflow-auto xl:max-h-[calc(100dvh-16rem)]">
+            <table className="app-table table-sticky min-w-[760px] text-left text-sm">
+              <thead>
                 <tr>
-                  <th className="px-3 py-3">District</th>
-                  <th className="px-3 py-3">State</th>
-                  <th className="px-3 py-3">Crop</th>
-                  <th className="px-3 py-3">NDVI</th>
-                  <th className="px-3 py-3">Risk</th>
-                  <th className="px-3 py-3">Updated</th>
-                  <th className="px-3 py-3">Actions</th>
+                  <th>District</th>
+                  <th>State</th>
+                  <th>Crop</th>
+                  <th>NDVI</th>
+                  <th>Risk</th>
+                  <th>Updated</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((district) => (
-                  <tr key={district.id} className="border-t border-border text-text-main">
-                    <td className="px-3 py-4 font-semibold">{district.district}</td>
-                    <td className="px-3 py-4">{district.state}</td>
-                    <td className="px-3 py-4">{district.crop}</td>
-                    <td className="px-3 py-4 font-mono">{district.ndviScore.toFixed(2)}</td>
-                    <td className="px-3 py-4">
-                      <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-semibold">{district.riskLevel}</span>
+                  <tr key={district.id}>
+                    <td className="font-semibold">{district.district}</td>
+                    <td>{district.state}</td>
+                    <td>{district.crop}</td>
+                    <td className="font-mono">{district.ndviScore.toFixed(2)}</td>
+                    <td>
+                      <span className="table-chip">{district.riskLevel}</span>
                     </td>
-                    <td className="px-3 py-4">{new Date(district.updatedAt).toLocaleString('en-IN')}</td>
-                    <td className="px-3 py-4">
+                    <td>{new Date(district.updatedAt).toLocaleString('en-IN')}</td>
+                    <td>
                       <button
                         type="button"
                         onClick={() => openDistrict(district)}

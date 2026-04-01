@@ -43,30 +43,30 @@ export default function AuditTrail() {
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
-        <div className="touch-scroll overflow-auto xl:max-h-[calc(100dvh-16rem)]">
-          <table className="table-sticky min-w-[900px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
+        <div className="table-shell touch-scroll overflow-auto xl:max-h-[calc(100dvh-16rem)]">
+          <table className="app-table table-sticky min-w-[900px] text-left text-sm">
+            <thead>
               <tr>
-                <th className="px-3 py-3">Timestamp</th>
-                <th className="px-3 py-3">Agent</th>
-                <th className="px-3 py-3">Action</th>
-                <th className="px-3 py-3">District</th>
-                <th className="px-3 py-3">Confidence</th>
-                <th className="px-3 py-3">Escalation</th>
+                <th>Timestamp</th>
+                <th>Agent</th>
+                <th>Action</th>
+                <th>District</th>
+                <th>Confidence</th>
+                <th>Escalation</th>
               </tr>
             </thead>
             <tbody>
               {entries.map((entry, index) => (
-                <tr key={`${entry.runId}-${index}`} className="border-t border-border align-top">
-                  <td className="px-3 py-4 text-text-main">{new Date(entry.timestamp).toLocaleString('en-IN')}</td>
-                  <td className="px-3 py-4 font-semibold text-text-main">{entry.agent}</td>
-                  <td className="px-3 py-4">
+                <tr key={`${entry.runId}-${index}`} className="align-top">
+                  <td>{new Date(entry.timestamp).toLocaleString('en-IN')}</td>
+                  <td className="font-semibold">{entry.agent}</td>
+                  <td>
                     <p className="text-text-main">{entry.action}</p>
                     <p className="mt-1 max-w-md text-xs leading-5 text-text-muted">{entry.outputSummary}</p>
                   </td>
-                  <td className="px-3 py-4 text-text-main">{entry.district}</td>
-                  <td className="px-3 py-4 text-text-main">{entry.confidence}%</td>
-                  <td className="px-3 py-4 text-text-main">{entry.escalation ? 'Yes' : 'No'}</td>
+                  <td>{entry.district}</td>
+                  <td><span className="table-chip">{entry.confidence}%</span></td>
+                  <td><span className="table-chip">{entry.escalation ? 'Yes' : 'No'}</span></td>
                 </tr>
               ))}
             </tbody>

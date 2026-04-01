@@ -161,27 +161,27 @@ export default function InstitutionalDashboard() {
           <h3 className="text-base font-semibold text-text-main">FPO Briefing Table</h3>
           <span className="rounded-full bg-surface-2 px-4 py-2 text-xs font-semibold text-text-main">JSON-ready output</span>
         </div>
-        <div className="touch-scroll overflow-auto xl:max-h-[calc(100dvh-18rem)]">
-          <table className="table-sticky min-w-[720px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
+        <div className="table-shell touch-scroll overflow-auto xl:max-h-[calc(100dvh-18rem)]">
+          <table className="app-table table-sticky min-w-[720px] text-left text-sm">
+            <thead>
               <tr>
-                <th className="px-3 py-3">District</th>
-                <th className="px-3 py-3">State</th>
-                <th className="px-3 py-3">Crop</th>
-                <th className="px-3 py-3">Risk Score</th>
-                <th className="px-3 py-3">Risk Level</th>
-                <th className="px-3 py-3">Acreage</th>
+                <th>District</th>
+                <th>State</th>
+                <th>Crop</th>
+                <th>Risk Score</th>
+                <th>Risk Level</th>
+                <th>Acreage</th>
               </tr>
             </thead>
             <tbody>
               {(districtsData?.districts ?? []).map((district) => (
-                <tr key={district.id} className="border-t border-border">
-                  <td className="px-3 py-4 font-semibold text-text-main">{district.district}</td>
-                  <td className="px-3 py-4 text-text-main">{district.state}</td>
-                  <td className="px-3 py-4 text-text-main">{district.crop}</td>
-                  <td className="px-3 py-4 font-mono text-text-main">{district.riskScore}</td>
-                  <td className="px-3 py-4 text-text-main">{district.riskLevel}</td>
-                  <td className="px-3 py-4 text-text-main">{district.acreageLakh.toFixed(1)} lakh acres</td>
+                <tr key={district.id}>
+                  <td className="font-semibold">{district.district}</td>
+                  <td>{district.state}</td>
+                  <td>{district.crop}</td>
+                  <td className="font-mono">{district.riskScore}</td>
+                  <td><span className="table-chip">{district.riskLevel}</span></td>
+                  <td>{district.acreageLakh.toFixed(1)} lakh acres</td>
                 </tr>
               ))}
             </tbody>
