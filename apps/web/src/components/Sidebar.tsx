@@ -7,7 +7,7 @@ const navigation = [
   { name: 'Farmer Help', to: '/farmer-advisory', icon: Languages },
   { name: 'Channels', to: '/channel-fallback', icon: MessageSquareText },
   { name: 'District Data', to: '/districts', icon: Globe2 },
-  { name: 'Mandi Prices', to: '/mandi-prices', icon: TrendingUp },
+  { name: 'Market Prices', to: '/mandi-prices', icon: TrendingUp },
   { name: 'Institutional Reports', to: '/institutional', icon: FileStack },
   { name: 'Audit Logs', to: '/audit', icon: AlertCircle },
 ];
@@ -29,7 +29,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-2 px-4 py-6">
+      <nav className="touch-scroll flex-1 space-y-2 overflow-y-auto px-4 py-6">
         {navigation.map((item) => (
           <NavLink
             key={item.name}
@@ -49,7 +49,7 @@ export default function Sidebar() {
         <div className="rounded-3xl border border-white/8 bg-white/6 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-white/55">Simple use</p>
           <p className="mt-3 text-sm leading-6 text-white/70">
-            Start with Farmer Help, then use Channels to see message delivery and Mandi Prices to answer sell-or-hold questions.
+            Start with Farmer Help, then use Channels to see message delivery and Market Prices to answer sell-or-hold questions.
           </p>
         </div>
 

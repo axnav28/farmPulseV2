@@ -65,7 +65,7 @@ export default function ChannelFallback() {
         description="This page shows exactly how the same farmer advisory would land on a smartphone or feature phone, which is closer to real field deployment than a dashboard-only demo."
       />
 
-      <div className="grid gap-7 xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)]">
+      <div className="grid gap-7 xl:grid-cols-[minmax(300px,440px)_minmax(0,1fr)]">
         <section className="rounded-[30px] border border-border bg-surface-1 p-6 shadow-[0_20px_48px_rgba(20,44,31,0.10)]">
           <div className="space-y-4">
             <div>
@@ -178,10 +178,10 @@ function PhoneFrame({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-[40px] border border-border bg-surface-1 p-5 shadow-[0_24px_56px_rgba(20,44,31,0.12)]">
-      <div className="mx-auto flex max-w-[350px] flex-col rounded-[36px] border-[10px] border-[#111827] bg-[#0f172a] p-3.5 shadow-[0_26px_60px_rgba(15,23,42,0.30)]">
+    <div className="rounded-[40px] border border-border bg-surface-1 p-4 shadow-[0_24px_56px_rgba(20,44,31,0.12)] sm:p-5">
+      <div className="mx-auto flex w-full max-w-[350px] flex-col rounded-[32px] border-[8px] border-[#111827] bg-[#0f172a] p-3 shadow-[0_26px_60px_rgba(15,23,42,0.30)] sm:rounded-[36px] sm:border-[10px] sm:p-3.5">
         <div className="mx-auto mb-3 h-1.5 w-24 rounded-full bg-white/20" />
-        <div className={'rounded-[26px] p-4.5 ' + accent}>
+        <div className={'rounded-[24px] p-4 sm:rounded-[26px] ' + accent}>
           <div className="flex items-center justify-between gap-3 border-b border-black/5 pb-3">
             <div className="flex items-center gap-3 text-text-main">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-primary">{icon}</div>
@@ -192,7 +192,7 @@ function PhoneFrame({
             </div>
             <Smartphone size={18} className="text-text-muted" />
           </div>
-          <div className="mt-4 max-h-[29rem] overflow-y-auto">{children}</div>
+          <div className="mt-4">{children}</div>
         </div>
       </div>
     </div>
@@ -200,7 +200,7 @@ function PhoneFrame({
 }
 
 function ChatBubble({ tone, children }: { tone: 'incoming' | 'outgoing'; children: ReactNode }) {
-  const toneClass = tone === 'outgoing' ? 'ml-8 bg-[#dcf8c6]' : 'mr-8 bg-white';
+  const toneClass = tone === 'outgoing' ? 'ml-6 bg-[#dcf8c6] sm:ml-8' : 'mr-6 bg-white sm:mr-8';
   return <div className={'rounded-[22px] px-4 py-3.5 text-[0.98rem] leading-7 shadow-[0_10px_24px_rgba(15,23,42,0.08)] ' + toneClass}>{children}</div>;
 }
 

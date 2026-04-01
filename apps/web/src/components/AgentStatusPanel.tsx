@@ -20,7 +20,7 @@ export default function AgentStatusPanel({ agents }: { agents: AgentCardState[] 
       {agents.map((agent) => (
         <div key={agent.name} className="rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
           <div className="flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-sm font-semibold text-text-main">{agent.name}</h3>
               <p className="mt-2 text-sm leading-6 text-text-muted">{agent.description}</p>
             </div>

@@ -69,6 +69,7 @@ export default function RiskMap({
   title?: string;
 }) {
   const mapTitle = title ?? (metric === 'ndvi' ? 'NDVI Heat Map' : 'Risk Heat Map');
+  const mapHeight = `clamp(18rem, 48vw, ${height}px)`;
   const ndviMeta = districts[0]?.ndviMeta;
   const ndviDescription = ndviMeta?.mode === 'reference_snapshot'
     ? 'District vegetation signal is rendered as a green-to-red stress layer using live NASA POWER observations anchored to MODIS reference ranges.'
@@ -91,7 +92,7 @@ export default function RiskMap({
           ) : null}
         </div>
       </div>
-      <div style={{ height }}>
+      <div style={{ height: mapHeight }}>
         <MapContainer center={[22.5, 78.5]} zoom={5} scrollWheelZoom className="h-full w-full">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

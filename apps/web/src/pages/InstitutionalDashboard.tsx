@@ -97,13 +97,13 @@ export default function InstitutionalDashboard() {
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
         <RiskMap districts={districtsData?.districts ?? []} height={500} />
 
-        <div className="min-w-0 space-y-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto xl:pr-1">
+        <div className="min-w-0 space-y-6">
           <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
             <h3 className="text-base font-semibold text-text-main">Government Early Warning</h3>
             <div className="mt-4 space-y-3">
               {(districtsData?.states ?? []).map((state) => (
                 <div key={state.state} className="rounded-2xl bg-surface-2 p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-semibold text-text-main">{state.state}</p>
                     <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold text-text-main">
                       Avg Risk {state.avgRisk}
@@ -137,7 +137,7 @@ export default function InstitutionalDashboard() {
               ) : (
                 highRisk.slice(0, 8).map((district) => (
                   <div key={district.id} className="rounded-2xl border border-border bg-surface-2 p-4">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="font-semibold text-text-main">{district.district}</p>
                         <p className="text-sm text-text-muted">{district.state} • {district.crop}</p>
@@ -157,12 +157,12 @@ export default function InstitutionalDashboard() {
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-base font-semibold text-text-main">FPO Briefing Table</h3>
           <span className="rounded-full bg-surface-2 px-4 py-2 text-xs font-semibold text-text-main">JSON-ready output</span>
         </div>
-        <div className="max-h-[calc(100dvh-18rem)] overflow-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="table-scroll touch-scroll">
+          <table className="table-sticky min-w-[720px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
               <tr>
                 <th className="px-3 py-3">District</th>

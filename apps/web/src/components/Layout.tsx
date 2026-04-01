@@ -6,21 +6,21 @@ const mobileNav = [
   { label: 'Farmer Help', to: '/farmer-advisory' },
   { label: 'Channels', to: '/channel-fallback' },
   { label: 'District Data', to: '/districts' },
-  { label: 'Mandi Prices', to: '/mandi-prices' },
+  { label: 'Market Prices', to: '/mandi-prices' },
   { label: 'Reports', to: '/institutional' },
   { label: 'Audit', to: '/audit' },
 ];
 
 export default function Layout() {
   return (
-    <div className="flex h-dvh overflow-hidden bg-background text-text-main">
-      <div className="hidden h-dvh xl:block">
+    <div className="flex min-h-dvh flex-col bg-background text-text-main xl:h-dvh xl:flex-row xl:overflow-hidden">
+      <div className="hidden xl:block xl:h-dvh">
         <Sidebar />
       </div>
-      <main className="min-w-0 flex-1 overflow-hidden">
-        <div className="flex h-full min-h-0 flex-col bg-transparent">
+      <main className="min-w-0 flex-1 xl:overflow-hidden">
+        <div className="flex min-h-dvh flex-col bg-transparent xl:h-full xl:min-h-0">
           <div className="sticky top-0 z-[1000] border-b border-border bg-[rgba(255,255,255,0.82)] px-4 py-3 backdrop-blur xl:hidden">
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="touch-scroll flex gap-2 overflow-x-auto pb-1">
               {mobileNav.map((item) => (
                 <NavLink
                   key={item.to}
@@ -35,7 +35,7 @@ export default function Layout() {
               ))}
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overscroll-contain xl:min-h-0 xl:overflow-y-auto">
             <div className="mx-auto min-h-full max-w-[1760px]">
               <Outlet />
             </div>

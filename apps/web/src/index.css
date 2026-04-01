@@ -55,7 +55,7 @@
   body {
     margin: 0;
     min-width: 320px;
-    overflow: hidden;
+    overflow-x: hidden;
     background:
       radial-gradient(circle at top left, rgba(26, 58, 42, 0.14), transparent 30%),
       radial-gradient(circle at top right, rgba(245, 158, 11, 0.08), transparent 22%),
@@ -85,5 +85,28 @@
 @layer utilities {
   .leaflet-container {
     background: #d8e7d9;
+  }
+
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll table {
+    min-width: 100%;
+  }
+
+  .table-sticky thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+    backdrop-filter: blur(10px);
   }
 }

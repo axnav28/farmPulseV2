@@ -69,9 +69,9 @@ const pages = {
     body: `<div class="hero"><div class="eyebrow">Channels</div><h1>WhatsApp and SMS Fallback</h1><p class="lede">This page shows how the same advisory is delivered through farmer-friendly channels used in the field.</p></div>`
   },
   'mandi-prices': {
-    title: 'FarmPulse AI Mandi Prices',
-    description: 'Mandi price intelligence with crop-specific sell-or-hold guidance.',
-    body: `<div class="hero"><div class="eyebrow">Markets</div><h1>Mandi Price Intelligence</h1><p class="lede">This page combines crop-risk analysis with mandi pricing to support sell-or-hold decisions.</p></div>`
+    title: 'FarmPulse AI Market Prices',
+    description: 'Market price intelligence with crop-specific sell-or-hold guidance.',
+    body: `<div class="hero"><div class="eyebrow">Markets</div><h1>Market Price Intelligence</h1><p class="lede">This page combines crop-risk analysis with market pricing to support sell-or-hold decisions.</p></div>`
   }
 };
 

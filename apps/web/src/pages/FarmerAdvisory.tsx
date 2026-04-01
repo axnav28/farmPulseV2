@@ -474,7 +474,7 @@ export default function FarmerAdvisory() {
         </div>
       </section>
 
-      <div className='grid min-h-0 gap-6 2xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]'>
+      <div className='grid min-h-0 gap-6 2xl:grid-cols-[minmax(320px,430px)_minmax(0,1fr)]'>
         <section className='min-h-0 space-y-6'>
           <div className='rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
             <div className='flex flex-col items-start justify-between gap-3 sm:flex-row'>
@@ -491,7 +491,7 @@ export default function FarmerAdvisory() {
               </button>
             </div>
 
-            <div className='mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-4'>
+            <div className='mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
               <SelectField label='District' value={district} onChange={setDistrict} options={(districtsData?.districts ?? []).map((item) => item.district)} />
               <SelectField label='Crop' value={crop} onChange={setCrop} options={['Cotton', 'Wheat', 'Rice', 'Soybean', 'Sugarcane', 'Moringa']} />
               <SelectField label='Language' value={language} onChange={setLanguage} options={languageOptions} />
@@ -499,8 +499,8 @@ export default function FarmerAdvisory() {
             </div>
 
             <div className='mt-5 rounded-3xl border border-border bg-surface-2 p-4'>
-              <div className='flex items-start justify-between gap-4'>
-                <div>
+              <div className='flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='min-w-0'>
                   <p className='text-sm font-semibold text-text-main'>Farmer query</p>
                   <p className='mt-1 text-sm text-text-muted'>Use Marathi, Hindi, Punjabi, English, or another supported language directly in text, or tap the mic to speak.</p>
                 </div>
@@ -575,7 +575,7 @@ export default function FarmerAdvisory() {
           <div className='flex min-h-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
             <p className='text-sm font-semibold text-text-main'>Live end-to-end agent run</p>
             <p className='mt-1 text-sm leading-6 text-text-muted'>A single `/api/farmer-query` call streams all four agent stages and returns the farmer answer, risk score, audit entry, and institutional report together.</p>
-            <div className='mt-4 max-h-[23rem] space-y-3 overflow-auto pr-1'>
+            <div className='mt-4 space-y-3'>
               {agentFlow.map((item) => (
                 <AgentFlowCard key={item.agent} item={item} />
               ))}
@@ -588,8 +588,8 @@ export default function FarmerAdvisory() {
         </section>
 
         <section className='min-h-0 space-y-6'>
-          <div className='grid min-h-0 items-stretch gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]'>
-            <div className='flex min-h-[34rem] min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
+          <div className='grid min-h-0 items-stretch gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]'>
+            <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] lg:min-h-[34rem]'>
               <p className='text-sm font-semibold text-text-main'>Farmer answer</p>
               {!response && (
                 <div className='mt-5 rounded-3xl border border-dashed border-border bg-surface-2 p-6'>
@@ -606,7 +606,7 @@ export default function FarmerAdvisory() {
               )}
 
               {response && (
-                <div className='mt-5 flex-1 space-y-4 overflow-auto pr-1 min-w-0'>
+                <div className='mt-5 min-w-0 flex-1 space-y-4'>
                   {response.escalate ? (
                     <div className='min-w-0 rounded-3xl border border-amber-300 bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-[0_10px_30px_rgba(245,158,11,0.14)]'>
                       <div className='flex items-start gap-3'>
@@ -646,10 +646,10 @@ export default function FarmerAdvisory() {
               )}
             </div>
 
-            <div className='flex min-h-[34rem] min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
+            <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] lg:min-h-[34rem]'>
               <p className='text-sm font-semibold text-text-main'>5-day weather</p>
               <p className='mt-1 text-sm text-text-muted'>A drier day is usually safer for fertilizer application.</p>
-              <div className='mt-4 flex-1 space-y-3 overflow-auto pr-1'>
+              <div className='mt-4 flex-1 space-y-3'>
                 {(response?.forecast5d ?? []).map((day) => (
                   <ForecastRow key={day.date} day={day} highlight={bestDay?.date === day.date} />
                 ))}
@@ -660,9 +660,9 @@ export default function FarmerAdvisory() {
 
           {response && (
             <div className='grid min-h-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.82fr)]'>
-              <div className='flex min-h-[34rem] min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
+              <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] xl:min-h-[34rem]'>
                 <p className='text-sm font-semibold text-text-main'>Why the agent suggested this</p>
-                <div className='mt-4 flex-1 space-y-3 overflow-auto pr-1'>
+                <div className='mt-4 flex-1 space-y-3'>
                   {response.reasoningChain.map((item, index) => (
                     <div key={`${item.title}-${index}`} className='rounded-2xl border border-border bg-surface-2 p-4'>
                       <p className='text-sm font-semibold text-text-main'>Step {index + 1}: {item.title}</p>
@@ -672,9 +672,9 @@ export default function FarmerAdvisory() {
                 </div>
               </div>
 
-              <div className='flex min-h-[34rem] min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)]'>
+              <div className='flex min-w-0 flex-col rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_45px_rgba(20,44,31,0.08)] xl:min-h-[34rem]'>
                 <p className='text-sm font-semibold text-text-main'>Returned in one API call</p>
-                <div className='mt-4 flex-1 space-y-3 overflow-auto pr-1'>
+                <div className='mt-4 flex-1 space-y-3'>
                   <SummaryRow label='SMS advisory' value={response.advisorySms} />
                   <SummaryRow label='Risk score' value={`${response.riskReport.riskScore}/100 • ${response.riskReport.riskCategory}`} />
                   <SummaryRow label='Confidence' value={`${response.confidence.toFixed(0)}%`} />
@@ -850,7 +850,7 @@ function PhonePreviewCard({
 }) {
   return (
     <div className='rounded-[28px] border border-border bg-background p-4'>
-      <div className='mx-auto w-[300px] rounded-[38px] bg-slate-950 p-[9px] shadow-[0_24px_60px_rgba(15,23,42,0.24)]'>
+      <div className='mx-auto w-full max-w-[300px] rounded-[34px] bg-slate-950 p-[8px] shadow-[0_24px_60px_rgba(15,23,42,0.24)] sm:rounded-[38px] sm:p-[9px]'>
         <div className='overflow-hidden rounded-[30px] border border-slate-800 bg-white'>
           <div className='flex items-center justify-between bg-slate-950 px-5 py-3 text-[11px] font-medium text-white'>
             <span>9:41</span>
@@ -861,8 +861,8 @@ function PhonePreviewCard({
             <p className='text-sm font-semibold text-slate-900'>{language} farmer view</p>
             <p className='text-xs text-slate-500'>{district} • {crop}</p>
           </div>
-          <div className='flex min-h-[470px] flex-col justify-between bg-[linear-gradient(180deg,#f8fafc_0%,#eef6f1_100%)] p-3'>
-            <div className='space-y-3 min-w-0'>
+          <div className='flex min-h-[420px] flex-col justify-between bg-[linear-gradient(180deg,#f8fafc_0%,#eef6f1_100%)] p-3 sm:min-h-[470px]'>
+            <div className='min-w-0 space-y-3'>
               <div className='ml-auto max-w-[84%] break-words rounded-[20px] rounded-tr-md bg-emerald-600 px-3.5 py-2.5 text-[13px] leading-5 text-white shadow-sm'>
                 {query}
               </div>

@@ -43,8 +43,8 @@ export default function AuditTrail() {
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
-        <div className="max-h-[calc(100dvh-16rem)] overflow-auto">
-          <table className="min-w-full text-left text-sm">
+        <div className="table-scroll touch-scroll">
+          <table className="table-sticky min-w-[900px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.2em] text-text-muted">
               <tr>
                 <th className="px-3 py-3">Timestamp</th>

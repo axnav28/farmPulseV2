@@ -102,7 +102,7 @@ export default function Overview() {
             type="button"
             onClick={handleRunAnalysis}
             disabled={running}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(31,122,77,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(31,122,77,0.28)] transition hover:brightness-110 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Play size={16} />
             {running ? 'Running Agents...' : 'Run Full Analysis'}
@@ -126,7 +126,7 @@ export default function Overview() {
 
       <div className="rounded-[28px] border border-[rgba(31,122,77,0.14)] bg-[linear-gradient(135deg,rgba(31,122,77,0.1),rgba(245,158,11,0.08))] p-6 shadow-[0_18px_48px_rgba(20,44,31,0.08)]">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-text-muted">Impact Quantification</p>
-        <p className="mt-3 text-[26px] font-semibold leading-tight text-text-main">₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.</p>
+        <p className="mt-3 text-2xl font-semibold leading-tight text-text-main sm:text-[26px]">₹15K-30K avg seasonal loss prevented × 86M farmers = ₹2.5L Cr addressable impact.</p>
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,0.9fr)]">
@@ -136,7 +136,7 @@ export default function Overview() {
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="min-w-0 overflow-hidden rounded-3xl border border-border bg-surface-1 p-5 shadow-[0_16px_40px_rgba(20,44,31,0.08)]">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-base font-semibold text-text-main">NDVI Trend Snapshot</h3>
             <span className="text-xs uppercase tracking-[0.2em] text-text-muted">Synthetic + seeded</span>
           </div>

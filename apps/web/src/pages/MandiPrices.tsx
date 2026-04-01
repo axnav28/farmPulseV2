@@ -32,7 +32,7 @@ export default function MandiPrices() {
         }
       } catch {
         if (!cancelled) {
-          toast.error('Could not load mandi price');
+          toast.error('Could not load market price');
         }
       } finally {
         if (!cancelled) {
@@ -55,12 +55,12 @@ export default function MandiPrices() {
   return (
     <div className="mx-auto flex min-h-full max-w-[1640px] flex-col gap-7 p-4 sm:p-6 lg:p-8">
       <PageHeader
-        eyebrow="Mandi Intelligence"
-        title="Live Mandi Price Intelligence"
-        description="Crop risk is only half the decision. This page adds mandi economics so the farmer or FPO can decide whether to sell now, hold, or stagger sale based on the latest district market signal."
+        eyebrow="Market Intelligence"
+        title="Live Market Price Intelligence"
+        description="Crop risk is only half the decision. This page adds market economics so the farmer or FPO can decide whether to sell now, hold, or stagger sale based on the latest district market signal."
       />
 
-      <section className="grid gap-7 xl:grid-cols-[minmax(340px,400px)_minmax(0,1fr)]">
+      <section className="grid gap-7 xl:grid-cols-[minmax(300px,400px)_minmax(0,1fr)]">
         <div className="rounded-[28px] border border-border bg-surface-1 p-6 shadow-[0_18px_44px_rgba(20,44,31,0.10)]">
           <div className="space-y-4">
             <div>
@@ -74,7 +74,7 @@ export default function MandiPrices() {
               <p className="mt-3 text-base font-semibold text-text-main">
                 {priceData
                   ? priceData.crop + ' is fetching ₹' + priceData.modalPrice.toLocaleString('en-IN') + '/' + priceData.unit + ' in ' + priceData.market + ' today.'
-                  : 'Loading mandi answer...'}
+                  : 'Loading market answer...'}
               </p>
               <p className="mt-2">{priceData?.recommendation ?? 'Waiting for market signal.'}</p>
             </div>
@@ -86,11 +86,11 @@ export default function MandiPrices() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.2em] text-text-muted">Market snapshot</p>
-                <h2 className="mt-2 text-[2.5rem] font-semibold tracking-[-0.05em] text-text-main">
+                <h2 className="mt-2 text-[2rem] font-semibold tracking-[-0.05em] text-text-main sm:text-[2.5rem]">
                   {loading || !priceData ? 'Loading...' : '₹' + priceData.modalPrice.toLocaleString('en-IN')}
                 </h2>
                 <p className="mt-2 text-[1rem] leading-7 text-text-muted">
-                  {priceData ? priceData.market + ', ' + priceData.district + ' · ' + priceData.priceDate : 'Fetching mandi price signal'}
+                  {priceData ? priceData.market + ', ' + priceData.district + ' · ' + priceData.priceDate : 'Fetching market price signal'}
                 </p>
               </div>
               {priceData ? (
@@ -100,7 +100,7 @@ export default function MandiPrices() {
               ) : null}
             </div>
 
-            <div className="mt-7 grid gap-4 md:grid-cols-4">
+            <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard icon={<BadgeIndianRupee size={16} />} label="Modal price" value={priceData ? '₹' + priceData.modalPrice.toLocaleString('en-IN') : '--'} />
               <MetricCard icon={<LineChart size={16} />} label="Benchmark" value={priceData ? '₹' + priceData.benchmarkPrice.toLocaleString('en-IN') : '--'} />
               <MetricCard icon={<Store size={16} />} label="Market" value={priceData?.market ?? '--'} />
